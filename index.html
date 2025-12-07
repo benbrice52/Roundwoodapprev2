@@ -449,19 +449,61 @@
             currentVisitId = visitId;
             document.getElementById('startVisitModal').classList.add('active');
         }
-        async function confirmStartVisit() {
-            const files = document.getElementById('beforePhotosInput').files;
-            if (files.length === 0) {
-                if (!confirm('No before photos selected. Continue anyway?')) return;
-            }
-            beforePhotosData = [];
-            for (const file of files) {
-                const base64 = await fileToBase64(file);
-                beforePhotosData.push(base64);
-            }
-            closeModal('startVisitModal');
-            showCompleteVisitModal(currentVisitId);
-        }
+ async function confirmStartVisit() {
+    const files = document.getElementById('beforePhotosInput').files;
+    if (files.length === 0) {
+        if (!confirm('No before photos selected. Continue anyway?')) return;
+    }
+    beforePhotosData = [];
+    for (const file of files) {
+        const base64 = await fileToBase64(file);
+        beforePhotosData.push(base64);
+    }
+    
+    // Don't close the start visit modal yet, go directly to complete
+    const visitId = currentVisitId;
+    closeModal('startVisitModal');
+    
+    // Pass the visit ID to the complete modal
+    setTimeout(() => {
+        showCompleteVisitModal(visitId);
+    }, 100);
+}
+
+
+function showCompleteVisitModal(visitId) {
+    console.log('Opening complete modal for visit:', visitId);
+    console.log('Current visits:', visits);
+    
+    document.getElementById('visitId').value = visitId;
+    
+    if (currentUser.role === 'staff') {
+        document.getElementById('staffMember').value = currentUser.name;
+    }
+    
+    const visit = visits.find(v => v.id === visitId);
+    console.log('Found visit:', visit);
+    
+    if (!visit) {
+        alert('Error: Visit not found. Please try again.');
+        return;
+    }
+    
+    if (visit && visit.services && visit.services.length > 0) {
+        const container = document.getElementById('completedServicesCheckboxes');
+        container.innerHTML = '';
+        visit.services.forEach(service => {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            div.innerHTML = `<input type="checkbox" id="completed-${service.replace(/\s+/g, '-')}" value="${service}" checked><label for="completed-${service.replace(/\s+/g, '-')}">${service}</label>`;
+            container.appendChild(div);
+        });
+    } else {
+        document.getElementById('completedServicesCheckboxes').innerHTML = '<p style="color: var(--gray-500);">No services specified for this site</p>';
+    }
+    
+    document.getElementById('completeVisitModal').classList.add('active');
+}
         function fileToBase64(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -469,24 +511,111 @@
                 reader.readAsDataURL(file);
             });
         }
-        function showCompleteVisitModal(visitId) {
-            document.getElementById('visitId').value = visitId;
-            if (currentUser.role === 'staff') {
-                document.getElementById('staffMember').value = currentUser.name;
-            }
-            const visit = visits.find(v => v.id === visitId);
-            if (visit && visit.services) {
-                const container = document.getElementById('completedServicesCheckboxes');
-                container.innerHTML = '';
-                visit.services.forEach(service => {
-                    const div = document.createElement('div');
-                    div.className = 'checkbox-item';
-                    div.innerHTML = `<input type="checkbox" id="completed-${service.replace(/\s+/g, '-')}" value="${service}"><label for="completed-${service.replace(/\s+/g, '-')}">${service}</label>`;
-                    container.appendChild(div);
-                });
-            }
-            document.getElementById('completeVisitModal').classList.add('active');
+async function completeVisit() {
+    console.log('Complete visit button clicked');
+    const visitId = document.getElementById('visitId').value;
+    console.log('Visit ID from form:', visitId);
+    
+    const staffMember = document.getElementById('staffMember').value;
+    const timeSpent = document.getElementById('timeSpent').value;
+    const workNotes = document.getElementById('workNotes').value;
+    
+    if (!staffMember) {
+        alert('Please enter staff member name');
+        return;
+    }
+    
+    if (!visitId) {
+        alert('Error: No visit ID found');
+        return;
+    }
+    
+    // Find the visit in the current visits array
+    const visit = visits.find(v => v.id === visitId);
+    console.log('Found visit in array:', visit);
+    
+    if (!visit) {
+        alert('Error: Visit data not found. The visit may have already been completed.');
+        return;
+    }
+    
+    const signatureData = signaturePad.canvas.toDataURL();
+    const completedServices = [];
+    document.querySelectorAll('#completedServicesCheckboxes input[type="checkbox"]:checked').forEach(cb => {
+        completedServices.push(cb.value);
+    });
+    
+    const worksheet = {
+        grass: document.getElementById('ws-grass').checked,
+        hedges: document.getElementById('ws-hedges').checked,
+        weeds: document.getElementById('ws-weeds').checked,
+        borders: document.getElementById('ws-borders').checked,
+        litter: document.getElementById('ws-litter').checked,
+        tidy: document.getElementById('ws-tidy').checked
+    };
+    
+    try {
+        const afterPhotosFiles = document.getElementById('afterPhotosInput').files;
+        const afterPhotosArray = [];
+        
+        for (const file of afterPhotosFiles) {
+            const base64 = await fileToBase64(file);
+            afterPhotosArray.push(base64);
         }
+        
+        const completedVisit = {
+            siteId: visit.siteId,
+            siteName: visit.siteName,
+            address: visit.address,
+            frequency: visit.frequency,
+            services: visit.services,
+            date: visit.date,
+            completedAt: new Date().toISOString(),
+            staffMember,
+            timeSpent,
+            workNotes,
+            completedServices,
+            worksheet,
+            signature: signatureData,
+            beforePhotos: beforePhotosData || [],
+            afterPhotos: afterPhotosArray,
+            invoiceStatus: 'awaiting_invoice',
+            completedBy: currentUser.email
+        };
+        
+        console.log('Saving completed visit to Firebase...');
+        await database.ref('completedVisits').push(completedVisit);
+        console.log('Removing visit from scheduled...');
+        await database.ref('visits/' + visitId).remove();
+        
+        const site = sites.find(s => s.id === visit.siteId);
+        if (site && site.frequency !== 'one-off') {
+            console.log('Creating next visit...');
+            const nextDate = new Date(visit.date);
+            const daysBetween = FREQUENCY_DAYS[site.frequency];
+            nextDate.setDate(nextDate.getDate() + daysBetween);
+            await database.ref('visits').push({
+                siteId: site.id,
+                siteName: site.name,
+                address: site.address,
+                frequency: site.frequency,
+                services: site.services,
+                date: nextDate.toISOString().split('T')[0],
+                status: 'scheduled'
+            });
+        }
+        
+        sendCompletionEmail(completedVisit);
+        alert('✅ Visit completed!\n\n📧 Email sent to Office@roundwoodsolutions.co.uk');
+        
+        beforePhotosData = [];
+        currentVisitId = null;
+        closeModal('completeVisitModal');
+    } catch (error) {
+        console.error('Error completing visit:', error);
+        alert('Error completing visit: ' + error.message);
+    }
+}
         async function completeVisit() {
             console.log('Complete visit button clicked');
             const visitId = document.getElementById('visitId').value;
