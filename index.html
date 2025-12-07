@@ -296,7 +296,7 @@
         const database = firebase.database();
         const SERVICES = ['Regular Grass Cutting', 'Hedge Trimming', 'Weed Control', 'Border Maintenance', 'Leaf Clearing', 'Seasonal Planting', 'Litter Picking', 'Car Park Maintenance', 'Sports Pitch Line Marking', 'Forest School Maintenance', 'Tree Surveys'];
         const FREQUENCY_DAYS = {'one-off': 0, 'weekly': 7, 'fortnightly': 14, 'monthly': 30, 'quarterly': 91, 'tri-annually': 122};
-        let currentUser = null, sites = [], visits = [], completedVisits = [], signaturePad = null, isDrawing = false, beforePhotosData = [], currentVisitId = null;
+        let currentUser = null, sites = [], visits = [], completedVisits = [], signaturePad = null, isDrawing = false, beforePhotosData = [], afterPhotosData = [], currentVisitId = null;
         document.addEventListener('DOMContentLoaded', function() {
             initializeServiceCheckboxes();
             initializeTabs();
@@ -414,7 +414,24 @@
         async function logout() {if (confirm('Are you sure you want to logout?')) {try {await auth.signOut();currentUser = null;sites = [];visits = [];completedVisits = [];document.getElementById('loginModal').classList.add('active');} catch (error) {console.error('Logout error:', error);}}}
         function updateUIForRole() {const isAdmin = currentUser.role === 'admin';document.getElementById('userInfo').style.display = 'block';document.getElementById('currentUser').innerHTML = `<strong>${currentUser.name}</strong><br><span style="font-size: 0.75rem;">${currentUser.email}</span><br><span style="font-size: 0.75rem;">${isAdmin ? '👑 Administrator' : '👤 Staff Member'}</span>`;document.querySelectorAll('.admin-only').forEach(el => {el.style.display = isAdmin ? '' : 'none';});if (!isAdmin) {switchTab('upcoming');}}
         function showAddSiteModal() {if (currentUser.role !== 'admin') {alert('Only administrators can add sites.');return;}document.getElementById('addSiteModal').classList.add('active');}
-        function closeModal(modalId) {document.getElementById(modalId).classList.remove('active');if (modalId === 'startVisitModal') {beforePhotosData = [];currentVisitId = null;document.getElementById('beforePhotosInput').value = '';document.getElementById('beforePhotosPreview').innerHTML = '';}}
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            if (modalId === 'startVisitModal') {
+                beforePhotosData = [];
+                currentVisitId = null;
+                document.getElementById('beforePhotosInput').value = '';
+                document.getElementById('beforePhotosPreview').innerHTML = '';
+            }
+            if (modalId === 'completeVisitModal') {
+                afterPhotosData = [];
+                document.getElementById('afterPhotosInput').value = '';
+                document.getElementById('afterPhotosPreview').innerHTML = '';
+                document.getElementById('workNotes').value = '';
+                document.getElementById('timeSpent').value = '';
+                clearSignature();
+                document.querySelectorAll('.worksheet input[type="checkbox"]').forEach(cb => cb.checked = false);
+            }
+        }
         async function saveSite() {const name = document.getElementById('siteName').value;const address = document.getElementById('siteAddress').value;const frequency = document.getElementById('visitFrequency').value;const firstVisit = document.getElementById('firstVisit').value;const notes = document.getElementById('siteNotes').value;if (!name || !address || !frequency || !firstVisit) {alert('Please fill in all required fields!');return;}const selectedServices = [];document.querySelectorAll('#servicesCheckboxes input[type="checkbox"]:checked').forEach(cb => {selectedServices.push(cb.value);});try {const siteRef = database.ref('sites').push();const siteId = siteRef.key;await siteRef.set({name, address, services: selectedServices, frequency, notes, createdAt: new Date().toISOString(), createdBy: currentUser.email});await generateVisitsForSite(siteId, name, address, frequency, selectedServices, new Date(firstVisit));closeModal('addSiteModal');alert('Site added successfully!');} catch (error) {console.error('Error saving site:', error);alert('Error saving site: ' + error.message);}}
         async function generateVisitsForSite(siteId, siteName, address, frequency, services, startDate) {
             const daysBetween = FREQUENCY_DAYS[frequency];
@@ -471,22 +488,29 @@
             document.getElementById('completeVisitModal').classList.add('active');
         }
         async function completeVisit() {
+            console.log('Complete visit button clicked');
             const visitId = document.getElementById('visitId').value;
             const staffMember = document.getElementById('staffMember').value;
             const timeSpent = document.getElementById('timeSpent').value;
             const workNotes = document.getElementById('workNotes').value;
-            if (!staffMember) {alert('Please enter staff member name');return;}
-            const afterPhotosFiles = document.getElementById('afterPhotosInput').files;
-            if (afterPhotosFiles.length === 0) {
-                if (!confirm('No after photos selected. Continue anyway?')) return;
+            
+            if (!staffMember) {
+                alert('Please enter staff member name');
+                return;
             }
+            
             const visit = visits.find(v => v.id === visitId);
-            if (!visit) return;
+            if (!visit) {
+                alert('Visit not found');
+                return;
+            }
+            
             const signatureData = signaturePad.canvas.toDataURL();
             const completedServices = [];
             document.querySelectorAll('#completedServicesCheckboxes input[type="checkbox"]:checked').forEach(cb => {
                 completedServices.push(cb.value);
             });
+            
             const worksheet = {
                 grass: document.getElementById('ws-grass').checked,
                 hedges: document.getElementById('ws-hedges').checked,
@@ -495,35 +519,92 @@
                 litter: document.getElementById('ws-litter').checked,
                 tidy: document.getElementById('ws-tidy').checked
             };
+            
             try {
-                const afterPhotosData = [];
+                const afterPhotosFiles = document.getElementById('afterPhotosInput').files;
+                const afterPhotosArray = [];
+                
                 for (const file of afterPhotosFiles) {
                     const base64 = await fileToBase64(file);
-                    afterPhotosData.push(base64);
+                    afterPhotosArray.push(base64);
                 }
-                const completedVisit = {...visit, completedAt: new Date().toISOString(), staffMember, timeSpent, workNotes, completedServices, worksheet, signature: signatureData, beforePhotos: beforePhotosData, afterPhotos: afterPhotosData, invoiceStatus: 'awaiting_invoice', completedBy: currentUser.email};
+                
+                const completedVisit = {
+                    ...visit,
+                    completedAt: new Date().toISOString(),
+                    staffMember,
+                    timeSpent,
+                    workNotes,
+                    completedServices,
+                    worksheet,
+                    signature: signatureData,
+                    beforePhotos: beforePhotosData,
+                    afterPhotos: afterPhotosArray,
+                    invoiceStatus: 'awaiting_invoice',
+                    completedBy: currentUser.email
+                };
+                
+                console.log('Saving to Firebase...');
                 await database.ref('completedVisits').push(completedVisit);
                 await database.ref('visits/' + visitId).remove();
+                
                 const site = sites.find(s => s.id === visit.siteId);
                 if (site && site.frequency !== 'one-off') {
                     const nextDate = new Date(visit.date);
                     const daysBetween = FREQUENCY_DAYS[site.frequency];
                     nextDate.setDate(nextDate.getDate() + daysBetween);
-                    await database.ref('visits').push({siteId: site.id, siteName: site.name, address: site.address, frequency: site.frequency, services: site.services, date: nextDate.toISOString().split('T')[0], status: 'scheduled'});
+                    await database.ref('visits').push({
+                        siteId: site.id,
+                        siteName: site.name,
+                        address: site.address,
+                        frequency: site.frequency,
+                        services: site.services,
+                        date: nextDate.toISOString().split('T')[0],
+                        status: 'scheduled'
+                    });
                 }
+                
                 sendCompletionEmail(completedVisit);
                 alert('✅ Visit completed!\n\n📧 Email sent to Office@roundwoodsolutions.co.uk');
+                
                 beforePhotosData = [];
+                afterPhotosData = [];
                 currentVisitId = null;
                 closeModal('completeVisitModal');
-            } catch (error) {console.error('Error:', error);alert('Error completing visit: ' + error.message);}
+            } catch (error) {
+                console.error('Error completing visit:', error);
+                alert('Error completing visit: ' + error.message);
+            }
         }
         function sendCompletionEmail(visit) {const emailSubject = `Invoice Required: ${visit.siteName} - ${visit.frequency} Visit Completed`;const emailBody = `Visit Completion Details\n========================\n\nSite: ${visit.siteName}\nAddress: ${visit.address}\nFrequency: ${visit.frequency}\n\nCompleted By: ${visit.staffMember}\nCompleted On: ${new Date(visit.completedAt).toLocaleString('en-GB')}\nTime Spent: ${visit.timeSpent || 'Not recorded'} hours\n\nServices Completed:\n${visit.completedServices?.join(', ') || 'None specified'}\n\nWork Notes:\n${visit.workNotes || 'No notes provided'}\n\nWorksheet:\n- Grass cutting: ${visit.worksheet?.grass ? 'Yes' : 'No'}\n- Hedges trimmed: ${visit.worksheet?.hedges ? 'Yes' : 'No'}\n- Weeds removed: ${visit.worksheet?.weeds ? 'Yes' : 'No'}\n- Borders maintained: ${visit.worksheet?.borders ? 'Yes' : 'No'}\n- Litter removed: ${visit.worksheet?.litter ? 'Yes' : 'No'}\n- Site left tidy: ${visit.worksheet?.tidy ? 'Yes' : 'No'}\n\nPhotos:\n- Before: ${visit.beforePhotos?.length || 0}\n- After: ${visit.afterPhotos?.length || 0}\n\nCustomer Signature: Received\n\nPlease prepare and send invoice to the customer.`.trim();window.location.href = `mailto:Office@roundwoodsolutions.co.uk?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;}
         async function markInvoiceSent(visitId) {if (currentUser.role !== 'admin') {alert('Only administrators can manage invoices.');return;}try {await database.ref('completedVisits/' + visitId).update({invoiceStatus: 'invoiced', invoicedAt: new Date().toISOString(), invoicedBy: currentUser.email});alert('Invoice marked as sent!');} catch (error) {console.error('Error:', error);}}
         async function deleteSite(siteId) {if (currentUser.role !== 'admin') {alert('Only administrators can delete sites.');return;}if (confirm('Delete this site and all associated visits?')) {try {await database.ref('sites/' + siteId).remove();const visitsToDelete = visits.filter(v => v.siteId === siteId);for (const visit of visitsToDelete) {await database.ref('visits/' + visit.id).remove();}alert('Site deleted!');} catch (error) {console.error('Error:', error);}}}
         function renderAll() {renderStats();renderUpcomingVisits();renderSites();renderInvoices();renderCompleted();}
         function renderStats() {const today = new Date().toISOString().split('T')[0];const weekFromNow = new Date();weekFromNow.setDate(weekFromNow.getDate() + 7);const weekEnd = weekFromNow.toISOString().split('T')[0];document.getElementById('stat-total-sites').textContent = sites.length;document.getElementById('stat-upcoming').textContent = visits.length;document.getElementById('stat-pending-invoice').textContent = completedVisits.filter(v => v.invoiceStatus === 'awaiting_invoice').length;document.getElementById('stat-this-week').textContent = visits.filter(v => v.date >= today && v.date <= weekEnd).length;}
-        function renderUpcomingVisits() {const container = document.getElementById('upcoming-visits-list');const futureContainer = document.getElementById('future-visits-list');const upcomingVisits = visits.sort((a, b) => new Date(a.date) - new Date(b.date));if (upcomingVisits.length === 0) {container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-title">No upcoming visits</div><p>Add a site to schedule visits</p></div>';futureContainer.innerHTML = '';return;}const nextVisit = upcomingVisits[0];const isOverdue = new Date(nextVisit.date) < new Date();container.innerHTML = `<div class="visit-card"><div class="visit-header"><div class="visit-site-name">${nextVisit.siteName}</div><div class="visit-date">📅 ${formatDate(nextVisit.date)}</div><span class="visit-type">${nextVisit.frequency || 'Scheduled'}</span>${isOverdue ? '<span class="badge badge-overdue" style="margin-left: 0.5rem;">Overdue</span>' : ''}</div><div class="visit-details">📍 ${nextVisit.address}</div><div class="visit-actions"><button class="btn btn-success" onclick="startVisit('${nextVisit.id}')">▶️ Start Visit</button></div></div>`;if (upcomingVisits.length > 1) {futureContainer.innerHTML = upcomingVisits.slice(1).map(visit => {const isOverdue = new Date(visit.date) < new Date();return `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${visit.siteName} - ${visit.frequency || 'Scheduled'}</div><div class="list-item-meta">📅 ${formatDate(visit.date)} | 📍 ${visit.address}${isOverdue ? '<span class="badge badge-overdue">Overdue</span>' : ''}</div></div></div>`;}).join('');} else {futureContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">All caught up!</div></div>';}}
+        function renderUpcomingVisits() {
+            const container = document.getElementById('upcoming-visits-list');
+            const futureContainer = document.getElementById('future-visits-list');
+            const upcomingVisits = visits.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (upcomingVisits.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-title">No upcoming visits</div><p>Add a site to schedule visits</p></div>';
+                futureContainer.innerHTML = '';
+                return;
+            }
+            
+            const nextVisit = upcomingVisits[0];
+            const isOverdue = new Date(nextVisit.date) < new Date();
+            container.innerHTML = `<div class="visit-card"><div class="visit-header"><div class="visit-site-name">${nextVisit.siteName}</div><div class="visit-date">📅 ${formatDate(nextVisit.date)}</div><span class="visit-type">${nextVisit.frequency || 'Scheduled'}</span>${isOverdue ? '<span class="badge badge-overdue" style="margin-left: 0.5rem;">Overdue</span>' : ''}</div><div class="visit-details">📍 ${nextVisit.address}</div><div class="visit-actions"><button class="btn btn-success" onclick="startVisit('${nextVisit.id}')">▶️ Start Visit</button></div></div>`;
+            
+            if (upcomingVisits.length > 1) {
+                futureContainer.innerHTML = upcomingVisits.slice(1).map(visit => {
+                    const isOverdue = new Date(visit.date) < new Date();
+                    return `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${visit.siteName} - ${visit.frequency || 'Scheduled'}</div><div class="list-item-meta">📅 ${formatDate(visit.date)} | 📍 ${visit.address}${isOverdue ? '<span class="badge badge-overdue">Overdue</span>' : ''}</div></div><div class="list-item-actions"><button class="btn btn-success" onclick="startVisit('${visit.id}')">▶️ Start</button></div></div>`;
+                }).join('');
+            } else {
+                futureContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">All caught up!</div></div>';
+            }
+        }
         function renderSites() {const container = document.getElementById('sites-list');if (sites.length === 0) {container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏢</div><div class="empty-state-title">No sites yet</div><p>Click "Add Site" to get started</p></div>';return;}container.innerHTML = sites.map(site => `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${site.name}</div><div class="list-item-meta">📍 ${site.address}<br>📅 ${site.frequency || 'Not set'} visits</div></div><button class="btn btn-danger admin-only" onclick="deleteSite('${site.id}')">Delete</button></div>`).join('');}
         function renderInvoices() {const container = document.getElementById('invoices-list');const pendingInvoices = completedVisits.filter(v => v.invoiceStatus === 'awaiting_invoice');if (pendingInvoices.length === 0) {container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-title">All caught up!</div><p>No pending invoices</p></div>';return;}container.innerHTML = pendingInvoices.map(visit => `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${visit.siteName} - ${visit.frequency}</div><div class="list-item-meta">✅ Completed: ${formatDate(visit.completedAt.split('T')[0])}<br>👤 Staff: ${visit.staffMember}</div></div><button class="btn btn-success" onclick="markInvoiceSent('${visit.id}')">✓ Invoice Sent</button></div>`).join('');}
         function renderCompleted() {const container = document.getElementById('completed-list');const recentCompleted = completedVisits.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)).slice(0, 20);if (recentCompleted.length === 0) {container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">No completed visits yet</div></div>';return;}container.innerHTML = recentCompleted.map(visit => `<div class="list-item"><div class="list-item-info"><div class="list-item-title">${visit.siteName} - ${visit.frequency}</div><div class="list-item-meta">✅ ${formatDate(visit.completedAt.split('T')[0])} by ${visit.staffMember}<br>${visit.timeSpent ? `⏱️ ${visit.timeSpent} hours<br>` : ''}<span class="badge ${visit.invoiceStatus === 'invoiced' ? 'badge-invoiced' : 'badge-pending'}">${visit.invoiceStatus === 'invoiced' ? 'Invoiced' : 'Awaiting Invoice'}</span></div></div></div>`).join('');}
