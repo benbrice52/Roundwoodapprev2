@@ -1047,6 +1047,39 @@
     </script>
 
     <script>
+        // Send Invoice Request Email using mailto
+        function sendInvoiceEmail(visit) {
+            const emailSubject = `Invoice Required: ${visit.siteName} - Completed ${visit.completedDate}`;
+            
+            const emailBody = `
+Visit Completion Details
+========================
+
+Site Information:
+- Site Name: ${visit.siteName}
+- Address: ${visit.siteAddress}
+
+Work Details:
+- Completed By: ${visit.completedBy}
+- Completed On: ${new Date(visit.completedDate).toLocaleDateString('en-GB')}
+- Amount: £${visit.price.toFixed(2)}
+
+Work Notes:
+${visit.completionNotes || 'No additional notes provided'}
+
+Please prepare and send invoice to the customer.
+
+---
+This notification was generated automatically by Roundwood Route Manager.
+            `.trim();
+
+            // Create mailto link
+            const mailto = `mailto:office@roundwoodsolutions.co.uk?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            // Open email client
+            window.location.href = mailto;
+        }
+
         // App State
         let sites = [];
         let visits = [];
@@ -1301,9 +1334,10 @@
                 const userId = window.currentUser.uid;
                 
                 // Update current visit
+                const completedDate = new Date().toISOString().split('T')[0];
                 await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
                     status: 'completed',
-                    completedDate: new Date().toISOString().split('T')[0],
+                    completedDate: completedDate,
                     completedBy: completedBy,
                     completionNotes: notes,
                     invoiceStatus: 'pending'
@@ -1328,7 +1362,19 @@
                 await window.dbSet(nextVisitRef, nextVisitData);
 
                 closeCompleteVisitModal();
-                alert('Visit completed! Next visit scheduled and accounts notified.');
+
+                // Prepare email data and open email client
+                const visitForEmail = {
+                    ...visit,
+                    completedDate: completedDate,
+                    completedBy: completedBy,
+                    completionNotes: notes
+                };
+                
+                // Open email client with pre-filled details
+                sendInvoiceEmail(visitForEmail);
+                
+                alert('✅ Visit completed!\n📧 Email opening to office@roundwoodsolutions.co.uk\n📅 Next visit scheduled');
             } catch (error) {
                 console.error('Error completing visit:', error);
                 alert('Error completing visit. Please try again.');
