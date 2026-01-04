@@ -485,6 +485,92 @@
             border-top: 1px solid var(--gray-200);
         }
 
+        /* Photo Upload */
+        .photo-upload-area {
+            border: 2px dashed var(--gray-300);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--gray-50);
+        }
+
+        .photo-upload-area:active {
+            border-color: var(--primary);
+            background: var(--gray-100);
+        }
+
+        .photo-upload-area p {
+            margin: 0;
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+
+        .photo-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 0.25rem;
+        }
+
+        .photo-preview-item {
+            position: relative;
+            padding-top: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 2px solid var(--gray-200);
+            background: var(--gray-100);
+        }
+
+        .photo-preview-item img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-remove {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.75rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 0;
+        }
+
+        /* Signature Pad */
+        .signature-pad {
+            border: 2px solid var(--gray-300);
+            border-radius: 8px;
+            cursor: crosshair;
+            touch-action: none;
+            background: white;
+            width: 100%;
+        }
+
+        .signature-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -910,25 +996,25 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Before Photos *</label>
+                    <label>Before Photos (Optional)</label>
                     <div class="photo-upload-area" onclick="document.getElementById('beforePhotos').click()">
-                        <p>📸 Tap to add before photos</p>
+                        <p>📸 Tap to add photos</p>
                         <input type="file" id="beforePhotos" accept="image/*" multiple capture="environment" style="display: none;">
                     </div>
                     <div id="beforePhotosPreview" class="photo-preview"></div>
                 </div>
 
                 <div class="form-group">
-                    <label>After Photos *</label>
+                    <label>After Photos (Optional)</label>
                     <div class="photo-upload-area" onclick="document.getElementById('afterPhotos').click()">
-                        <p>📸 Tap to add after photos</p>
+                        <p>📸 Tap to add photos</p>
                         <input type="file" id="afterPhotos" accept="image/*" multiple capture="environment" style="display: none;">
                     </div>
                     <div id="afterPhotosPreview" class="photo-preview"></div>
                 </div>
 
                 <div class="form-group">
-                    <label>Customer Signature *</label>
+                    <label>Customer Signature (Optional)</label>
                     <canvas id="signaturePad" class="signature-pad" width="540" height="200"></canvas>
                     <div class="signature-controls">
                         <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
@@ -1545,72 +1631,87 @@ This notification was generated automatically by Roundwood Route Manager.
             const completedBy = document.getElementById('completedBy').value;
             const notes = document.getElementById('completionNotes').value;
 
-            // Validate photos
-            if (beforePhotosData.length === 0) {
-                alert('Please add at least one before photo');
-                return;
-            }
-            if (afterPhotosData.length === 0) {
-                alert('Please add at least one after photo');
-                return;
-            }
-
-            // Validate signature
-            const canvas = document.getElementById('signaturePad');
-            const signatureData = canvas.toDataURL();
-            const blankCanvas = document.createElement('canvas');
-            blankCanvas.width = canvas.width;
-            blankCanvas.height = canvas.height;
-            if (signatureData === blankCanvas.toDataURL()) {
-                alert('Please provide a customer signature');
-                return;
-            }
-
             const visit = visits.find(v => v.id === visitId);
             if (!visit) return;
+
+            // Show loading state
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
 
             try {
                 const userId = window.currentUser.uid;
                 const completedDate = new Date().toISOString().split('T')[0];
                 
-                // Upload photos to Firebase Storage
+                // Upload photos to Firebase Storage (if any)
                 const beforePhotoUrls = [];
                 const afterPhotoUrls = [];
                 
-                for (let i = 0; i < beforePhotosData.length; i++) {
-                    const photoRef = window.storageRef(window.storage, `visits/${visitId}/before_${i}_${Date.now()}.jpg`);
-                    const blob = await fetch(beforePhotosData[i].data).then(r => r.blob());
-                    await window.uploadBytes(photoRef, blob);
-                    const url = await window.getDownloadURL(photoRef);
-                    beforePhotoUrls.push(url);
+                if (beforePhotosData.length > 0) {
+                    for (let i = 0; i < beforePhotosData.length; i++) {
+                        try {
+                            const photoRef = window.storageRef(window.storage, `visits/${visitId}/before_${i}_${Date.now()}.jpg`);
+                            const blob = await fetch(beforePhotosData[i].data).then(r => r.blob());
+                            await window.uploadBytes(photoRef, blob);
+                            const url = await window.getDownloadURL(photoRef);
+                            beforePhotoUrls.push(url);
+                        } catch (err) {
+                            console.error('Error uploading before photo:', err);
+                        }
+                    }
                 }
                 
-                for (let i = 0; i < afterPhotosData.length; i++) {
-                    const photoRef = window.storageRef(window.storage, `visits/${visitId}/after_${i}_${Date.now()}.jpg`);
-                    const blob = await fetch(afterPhotosData[i].data).then(r => r.blob());
-                    await window.uploadBytes(photoRef, blob);
-                    const url = await window.getDownloadURL(photoRef);
-                    afterPhotoUrls.push(url);
+                if (afterPhotosData.length > 0) {
+                    for (let i = 0; i < afterPhotosData.length; i++) {
+                        try {
+                            const photoRef = window.storageRef(window.storage, `visits/${visitId}/after_${i}_${Date.now()}.jpg`);
+                            const blob = await fetch(afterPhotosData[i].data).then(r => r.blob());
+                            await window.uploadBytes(photoRef, blob);
+                            const url = await window.getDownloadURL(photoRef);
+                            afterPhotoUrls.push(url);
+                        } catch (err) {
+                            console.error('Error uploading after photo:', err);
+                        }
+                    }
                 }
                 
-                // Upload signature
-                const signatureRef = window.storageRef(window.storage, `visits/${visitId}/signature_${Date.now()}.png`);
-                const signatureBlob = await fetch(signatureData).then(r => r.blob());
-                await window.uploadBytes(signatureRef, signatureBlob);
-                const signatureUrl = await window.getDownloadURL(signatureRef);
+                // Upload signature (if provided)
+                let signatureUrl = null;
+                const canvas = document.getElementById('signaturePad');
+                if (canvas && signaturePad) {
+                    try {
+                        const signatureData = canvas.toDataURL();
+                        const blankCanvas = document.createElement('canvas');
+                        blankCanvas.width = canvas.width;
+                        blankCanvas.height = canvas.height;
+                        
+                        if (signatureData !== blankCanvas.toDataURL()) {
+                            const signatureRef = window.storageRef(window.storage, `visits/${visitId}/signature_${Date.now()}.png`);
+                            const signatureBlob = await fetch(signatureData).then(r => r.blob());
+                            await window.uploadBytes(signatureRef, signatureBlob);
+                            signatureUrl = await window.getDownloadURL(signatureRef);
+                        }
+                    } catch (err) {
+                        console.error('Error uploading signature:', err);
+                    }
+                }
                 
                 // Update current visit
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
+                const visitUpdate = {
                     status: 'completed',
                     completedDate: completedDate,
                     completedBy: completedBy,
                     completionNotes: notes,
                     invoiceStatus: 'pending',
-                    beforePhotos: beforePhotoUrls,
-                    afterPhotos: afterPhotoUrls,
-                    signature: signatureUrl,
                     completedAt: new Date().toISOString()
-                });
+                };
+                
+                if (beforePhotoUrls.length > 0) visitUpdate.beforePhotos = beforePhotoUrls;
+                if (afterPhotoUrls.length > 0) visitUpdate.afterPhotos = afterPhotoUrls;
+                if (signatureUrl) visitUpdate.signature = signatureUrl;
+                
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), visitUpdate);
 
                 // Create next visit
                 const nextVisitDate = new Date(visit.scheduledDate);
@@ -1646,7 +1747,9 @@ This notification was generated automatically by Roundwood Route Manager.
                 alert('✅ Visit completed!\n📧 Email notification sent\n📅 Next visit scheduled');
             } catch (error) {
                 console.error('Error completing visit:', error);
-                alert('Error completing visit: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                alert('Error completing visit: ' + error.message + '\n\nCheck your internet connection and try again.');
             }
         });
 
