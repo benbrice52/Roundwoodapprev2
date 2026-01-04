@@ -1202,35 +1202,125 @@
     <script>
         // Send Invoice Request Email using mailto
         function sendInvoiceEmail(visit) {
+            // Create an HTML report with photos
+            const reportHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Visit Report - ${visit.siteName}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .header { background: #2d5016; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .section { margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; }
+        .photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 15px 0; }
+        .photo { width: 100%; border-radius: 8px; border: 2px solid #ddd; }
+        .signature { max-width: 400px; border: 2px solid #ddd; border-radius: 8px; }
+        h2 { color: #2d5016; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; }
+        td:first-child { font-weight: bold; width: 150px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌳 Roundwood Solutions</h1>
+        <h2>Visit Completion Report</h2>
+    </div>
+
+    <div class="section">
+        <h2>Site Information</h2>
+        <table>
+            <tr><td>Site Name:</td><td>${visit.siteName}</td></tr>
+            <tr><td>Address:</td><td>${visit.siteAddress}</td></tr>
+            <tr><td>Completed Date:</td><td>${new Date(visit.completedDate).toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'})}</td></tr>
+            <tr><td>Completed By:</td><td>${visit.completedBy}</td></tr>
+            <tr><td>Invoice Amount:</td><td style="color: #2d5016; font-size: 1.2em; font-weight: bold;">£${visit.price.toFixed(2)}</td></tr>
+        </table>
+    </div>
+
+    ${visit.completionNotes ? `
+    <div class="section">
+        <h2>Work Completed</h2>
+        <p>${visit.completionNotes}</p>
+    </div>
+    ` : ''}
+
+    ${visit.beforePhotos && visit.beforePhotos.length > 0 ? `
+    <div class="section">
+        <h2>Before Photos</h2>
+        <div class="photos">
+            ${visit.beforePhotos.map((photo, i) => `
+                <img src="${photo}" alt="Before photo ${i+1}" class="photo">
+            `).join('')}
+        </div>
+    </div>
+    ` : ''}
+
+    ${visit.afterPhotos && visit.afterPhotos.length > 0 ? `
+    <div class="section">
+        <h2>After Photos</h2>
+        <div class="photos">
+            ${visit.afterPhotos.map((photo, i) => `
+                <img src="${photo}" alt="After photo ${i+1}" class="photo">
+            `).join('')}
+        </div>
+    </div>
+    ` : ''}
+
+    ${visit.signature ? `
+    <div class="section">
+        <h2>Customer Signature</h2>
+        <img src="${visit.signature}" alt="Customer signature" class="signature">
+    </div>
+    ` : ''}
+
+    <div class="section" style="background: #fff3cd; border-left: 4px solid #f59e0b;">
+        <p><strong>⚠️ Action Required:</strong> Please prepare and send invoice for <strong>£${visit.price.toFixed(2)}</strong> to the customer.</p>
+    </div>
+
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #666; font-size: 0.9em;">
+        <p>This report was generated automatically by Roundwood Route Manager</p>
+        <p>Generated: ${new Date().toLocaleString('en-GB')}</p>
+    </div>
+</body>
+</html>
+            `;
+
+            // Create downloadable HTML file
+            const blob = new Blob([reportHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.completedDate}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // Also open simple email
             const emailSubject = `Invoice Required: ${visit.siteName} - Completed ${visit.completedDate}`;
-            
             const emailBody = `
-Visit Completion Details
-========================
+Visit Completion Report
 
-Site Information:
-- Site Name: ${visit.siteName}
-- Address: ${visit.siteAddress}
+Site: ${visit.siteName}
+Address: ${visit.siteAddress}
+Completed: ${new Date(visit.completedDate).toLocaleDateString('en-GB')}
+Completed By: ${visit.completedBy}
+Amount: £${visit.price.toFixed(2)}
 
-Work Details:
-- Completed By: ${visit.completedBy}
-- Completed On: ${new Date(visit.completedDate).toLocaleDateString('en-GB')}
-- Amount: £${visit.price.toFixed(2)}
+${visit.completionNotes ? `Work Done: ${visit.completionNotes}` : ''}
 
-Work Notes:
-${visit.completionNotes || 'No additional notes provided'}
+IMPORTANT: A detailed report with photos and signature has been downloaded to your computer.
+Please attach this HTML file to your invoice email or open it in your browser to view all photos.
 
-Please prepare and send invoice to the customer.
-
----
-This notification was generated automatically by Roundwood Route Manager.
+File name: Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.completedDate}.html
             `.trim();
 
-            // Create mailto link
             const mailto = `mailto:office@roundwoodsolutions.co.uk?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-            
-            // Open email client
-            window.location.href = mailto;
+            setTimeout(() => {
+                window.location.href = mailto;
+            }, 500);
         }
 
         // App State
@@ -1638,62 +1728,27 @@ This notification was generated automatically by Roundwood Route Manager.
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.textContent;
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Uploading...';
+            submitBtn.textContent = '⏳ Processing...';
 
             try {
                 const userId = window.currentUser.uid;
                 const completedDate = new Date().toISOString().split('T')[0];
                 
-                // Upload photos to Firebase Storage (if any)
-                const beforePhotoUrls = [];
-                const afterPhotoUrls = [];
+                // Store photos as base64 (no Firebase Storage needed)
+                const beforePhotoUrls = beforePhotosData.map(p => p.data);
+                const afterPhotoUrls = afterPhotosData.map(p => p.data);
                 
-                if (beforePhotosData.length > 0) {
-                    for (let i = 0; i < beforePhotosData.length; i++) {
-                        try {
-                            const photoRef = window.storageRef(window.storage, `visits/${visitId}/before_${i}_${Date.now()}.jpg`);
-                            const blob = await fetch(beforePhotosData[i].data).then(r => r.blob());
-                            await window.uploadBytes(photoRef, blob);
-                            const url = await window.getDownloadURL(photoRef);
-                            beforePhotoUrls.push(url);
-                        } catch (err) {
-                            console.error('Error uploading before photo:', err);
-                        }
-                    }
-                }
-                
-                if (afterPhotosData.length > 0) {
-                    for (let i = 0; i < afterPhotosData.length; i++) {
-                        try {
-                            const photoRef = window.storageRef(window.storage, `visits/${visitId}/after_${i}_${Date.now()}.jpg`);
-                            const blob = await fetch(afterPhotosData[i].data).then(r => r.blob());
-                            await window.uploadBytes(photoRef, blob);
-                            const url = await window.getDownloadURL(photoRef);
-                            afterPhotoUrls.push(url);
-                        } catch (err) {
-                            console.error('Error uploading after photo:', err);
-                        }
-                    }
-                }
-                
-                // Upload signature (if provided)
+                // Get signature as base64
                 let signatureUrl = null;
                 const canvas = document.getElementById('signaturePad');
                 if (canvas && signaturePad) {
-                    try {
-                        const signatureData = canvas.toDataURL();
-                        const blankCanvas = document.createElement('canvas');
-                        blankCanvas.width = canvas.width;
-                        blankCanvas.height = canvas.height;
-                        
-                        if (signatureData !== blankCanvas.toDataURL()) {
-                            const signatureRef = window.storageRef(window.storage, `visits/${visitId}/signature_${Date.now()}.png`);
-                            const signatureBlob = await fetch(signatureData).then(r => r.blob());
-                            await window.uploadBytes(signatureRef, signatureBlob);
-                            signatureUrl = await window.getDownloadURL(signatureRef);
-                        }
-                    } catch (err) {
-                        console.error('Error uploading signature:', err);
+                    const signatureData = canvas.toDataURL();
+                    const blankCanvas = document.createElement('canvas');
+                    blankCanvas.width = canvas.width;
+                    blankCanvas.height = canvas.height;
+                    
+                    if (signatureData !== blankCanvas.toDataURL()) {
+                        signatureUrl = signatureData;
                     }
                 }
                 
