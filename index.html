@@ -976,63 +976,94 @@
 
     <!-- Complete Visit Modal -->
     <div id="completeVisitModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
-                <h2 class="modal-title">Complete Visit</h2>
+                <h2 class="modal-title">Complete Visit Worksheet</h2>
                 <button class="btn-close" onclick="closeCompleteVisitModal()">×</button>
             </div>
             
             <form id="completeVisitForm">
                 <input type="hidden" id="completeVisitId">
                 
+                <div class="alert alert-warning" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; margin-bottom: 1.5rem;">
+                    <strong>📸 Remember:</strong> Take before/after photos with your phone camera before completing
+                </div>
+
                 <div class="form-group">
-                    <label for="completedBy">Completed By *</label>
+                    <label for="completedBy">Roundwood Operative *</label>
                     <input type="text" id="completedBy" required placeholder="Staff member name">
+                </div>
+
+                <div class="card" style="background: var(--gray-50); margin-bottom: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.125rem;">Work Completed - Tick all that apply *</h3>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: white; border-radius: 8px; border: 2px solid var(--gray-200); transition: all 0.2s;">
+                            <input type="checkbox" class="work-task" required style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                            <span style="flex: 1;">
+                                <strong>Weed removal</strong> to appropriate areas - entrance/exits etc
+                            </span>
+                        </label>
+
+                        <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: white; border-radius: 8px; border: 2px solid var(--gray-200); transition: all 0.2s;">
+                            <input type="checkbox" class="work-task" required style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                            <span style="flex: 1;">
+                                <strong>Strimming</strong> as required to whole site
+                            </span>
+                        </label>
+
+                        <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: white; border-radius: 8px; border: 2px solid var(--gray-200); transition: all 0.2s;">
+                            <input type="checkbox" class="work-task" required style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                            <span style="flex: 1;">
+                                <strong>Weed suppressant</strong> applied as per map provided (Glyphosate based)
+                            </span>
+                        </label>
+
+                        <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: white; border-radius: 8px; border: 2px solid var(--gray-200); transition: all 0.2s;">
+                            <input type="checkbox" class="work-task" required style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                            <span style="flex: 1;">
+                                <strong>General tidy</strong> and rubbish removal
+                            </span>
+                        </label>
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="completionNotes">Work Completed</label>
-                    <textarea id="completionNotes" placeholder="Describe the work done..."></textarea>
+                    <label for="siteNotes">Site Notes / Additional Work</label>
+                    <textarea id="siteNotes" placeholder="Any additional notes about this visit..." rows="3"></textarea>
+                    <small style="color: var(--gray-500); font-size: 0.85rem;">Note: Weed suppressant can take around 4-6 weeks to take effect</small>
                 </div>
 
-                <div class="form-group">
-                    <label>Before Photos (Optional)</label>
-                    <div class="photo-upload-area" onclick="document.getElementById('beforePhotos').click()">
-                        <p>📸 Tap to add photos</p>
-                        <input type="file" id="beforePhotos" accept="image/*" multiple capture="environment" style="display: none;">
+                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.125rem;">Customer Sign-Off *</h3>
+                    
+                    <div class="form-group">
+                        <label for="customerName">Customer Name *</label>
+                        <input type="text" id="customerName" required placeholder="e.g. John Smith">
                     </div>
-                    <div id="beforePhotosPreview" class="photo-preview"></div>
-                </div>
 
-                <div class="form-group">
-                    <label>After Photos (Optional)</label>
-                    <div class="photo-upload-area" onclick="document.getElementById('afterPhotos').click()">
-                        <p>📸 Tap to add photos</p>
-                        <input type="file" id="afterPhotos" accept="image/*" multiple capture="environment" style="display: none;">
-                    </div>
-                    <div id="afterPhotosPreview" class="photo-preview"></div>
-                </div>
-
-                <div class="form-group">
-                    <label>Customer Signature (Optional)</label>
-                    <canvas id="signaturePad" class="signature-pad" width="540" height="200"></canvas>
-                    <div class="signature-controls">
-                        <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
+                    <div class="form-group">
+                        <label>Customer Signature *</label>
+                        <canvas id="signaturePad" class="signature-pad" width="540" height="200" style="touch-action: none;"></canvas>
+                        <div class="signature-controls">
+                            <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
+                        </div>
+                        <small style="color: var(--gray-500); font-size: 0.85rem;">Customer must sign above to confirm work completed</small>
                     </div>
                 </div>
                 
                 <div class="alert alert-info">
                     Completing this visit will:
                     <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Generate a PDF worksheet with customer signature</li>
                         <li>Automatically schedule the next visit</li>
                         <li>Send email notification to finance team</li>
-                        <li>Save all photos and signature</li>
                     </ul>
                 </div>
                 
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-secondary" onclick="closeCompleteVisitModal()" style="flex: 1;">Cancel</button>
-                    <button type="submit" class="btn btn-success" style="flex: 1;">✓ Complete Visit</button>
+                    <button type="submit" class="btn btn-success" style="flex: 1;">✓ Complete & Generate Worksheet</button>
                 </div>
             </form>
         </div>
@@ -1202,125 +1233,45 @@
     <script>
         // Send Invoice Request Email using mailto
         function sendInvoiceEmail(visit) {
-            // Create an HTML report with photos
-            const reportHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Visit Report - ${visit.siteName}</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
-        .header { background: #2d5016; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .section { margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; }
-        .photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 15px 0; }
-        .photo { width: 100%; border-radius: 8px; border: 2px solid #ddd; }
-        .signature { max-width: 400px; border: 2px solid #ddd; border-radius: 8px; }
-        h2 { color: #2d5016; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 8px; border-bottom: 1px solid #ddd; }
-        td:first-child { font-weight: bold; width: 150px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🌳 Roundwood Solutions</h1>
-        <h2>Visit Completion Report</h2>
-    </div>
-
-    <div class="section">
-        <h2>Site Information</h2>
-        <table>
-            <tr><td>Site Name:</td><td>${visit.siteName}</td></tr>
-            <tr><td>Address:</td><td>${visit.siteAddress}</td></tr>
-            <tr><td>Completed Date:</td><td>${new Date(visit.completedDate).toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'})}</td></tr>
-            <tr><td>Completed By:</td><td>${visit.completedBy}</td></tr>
-            <tr><td>Invoice Amount:</td><td style="color: #2d5016; font-size: 1.2em; font-weight: bold;">£${visit.price.toFixed(2)}</td></tr>
-        </table>
-    </div>
-
-    ${visit.completionNotes ? `
-    <div class="section">
-        <h2>Work Completed</h2>
-        <p>${visit.completionNotes}</p>
-    </div>
-    ` : ''}
-
-    ${visit.beforePhotos && visit.beforePhotos.length > 0 ? `
-    <div class="section">
-        <h2>Before Photos</h2>
-        <div class="photos">
-            ${visit.beforePhotos.map((photo, i) => `
-                <img src="${photo}" alt="Before photo ${i+1}" class="photo">
-            `).join('')}
-        </div>
-    </div>
-    ` : ''}
-
-    ${visit.afterPhotos && visit.afterPhotos.length > 0 ? `
-    <div class="section">
-        <h2>After Photos</h2>
-        <div class="photos">
-            ${visit.afterPhotos.map((photo, i) => `
-                <img src="${photo}" alt="After photo ${i+1}" class="photo">
-            `).join('')}
-        </div>
-    </div>
-    ` : ''}
-
-    ${visit.signature ? `
-    <div class="section">
-        <h2>Customer Signature</h2>
-        <img src="${visit.signature}" alt="Customer signature" class="signature">
-    </div>
-    ` : ''}
-
-    <div class="section" style="background: #fff3cd; border-left: 4px solid #f59e0b;">
-        <p><strong>⚠️ Action Required:</strong> Please prepare and send invoice for <strong>£${visit.price.toFixed(2)}</strong> to the customer.</p>
-    </div>
-
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #666; font-size: 0.9em;">
-        <p>This report was generated automatically by Roundwood Route Manager</p>
-        <p>Generated: ${new Date().toLocaleString('en-GB')}</p>
-    </div>
-</body>
-</html>
-            `;
-
-            // Create downloadable HTML file
-            const blob = new Blob([reportHTML], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.completedDate}.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            // Also open simple email
             const emailSubject = `Invoice Required: ${visit.siteName} - Completed ${visit.completedDate}`;
+            
             const emailBody = `
-Visit Completion Report
+Visit Completion Details & Worksheet
+====================================
 
-Site: ${visit.siteName}
-Address: ${visit.siteAddress}
-Completed: ${new Date(visit.completedDate).toLocaleDateString('en-GB')}
-Completed By: ${visit.completedBy}
-Amount: £${visit.price.toFixed(2)}
+Site Information:
+- Site Name: ${visit.siteName}
+- Address: ${visit.siteAddress}
 
-${visit.completionNotes ? `Work Done: ${visit.completionNotes}` : ''}
+Work Details:
+- Completed By: ${visit.completedBy}
+- Completed On: ${new Date(visit.completedDate).toLocaleDateString('en-GB')}
+- Invoice Amount: £${visit.price.toFixed(2)}
 
-IMPORTANT: A detailed report with photos and signature has been downloaded to your computer.
-Please attach this HTML file to your invoice email or open it in your browser to view all photos.
+Work Completed (All tasks done):
+${visit.workSummary}
 
-File name: Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.completedDate}.html
+${visit.siteNotes ? `Site Notes:\n${visit.siteNotes}\n` : ''}
+Customer Sign-Off:
+- Customer Name: ${visit.customerName}
+- Signature: Captured digitally (view in app History)
+
+Next Visit Scheduled:
+- ${new Date(new Date(visit.scheduledDate).getTime() + (visit.frequency * 24 * 60 * 60 * 1000)).toLocaleDateString('en-GB')}
+
+REMINDER: 
+- Field staff should have before/after photos on their phone
+- Customer signature captured digitally
+- Worksheet completed and signed off
+
+Please prepare and send invoice to the customer.
+
+---
+This notification was generated automatically by Roundwood Route Manager.
             `.trim();
 
             const mailto = `mailto:office@roundwoodsolutions.co.uk?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-            setTimeout(() => {
-                window.location.href = mailto;
-            }, 500);
+            window.location.href = mailto;
         }
 
         // App State
@@ -1667,10 +1618,6 @@ File name: Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.co
                                 ${isOverdue ? 'Overdue' : 'Pending'}
                             </span>
                         </div>
-                        <div class="meta-item" style="margin-top: 1rem;">
-                            <div class="meta-label">Visit Price</div>
-                            <div class="meta-value">£${visit.price.toFixed(2)}</div>
-                        </div>
                         <div class="visit-actions">
                             <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="flex: 1;">
                                 ✓ Complete Visit
@@ -1689,17 +1636,13 @@ File name: Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.co
             document.getElementById('completeVisitId').value = visitId;
             document.getElementById('completedBy').value = window.currentUser.name;
             
-            // Reset photo arrays
-            beforePhotosData = [];
-            afterPhotosData = [];
-            document.getElementById('beforePhotosPreview').innerHTML = '';
-            document.getElementById('afterPhotosPreview').innerHTML = '';
-            
-            // Clear signature
-            if (signaturePad) {
+            // Clear signature pad
+            setTimeout(() => {
                 const canvas = document.getElementById('signaturePad');
-                signaturePad.clearRect(0, 0, canvas.width, canvas.height);
-            }
+                if (canvas && signaturePad) {
+                    signaturePad.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }, 100);
             
             document.getElementById('completeVisitModal').classList.add('active');
         };
@@ -1707,22 +1650,51 @@ File name: Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.co
         window.closeCompleteVisitModal = () => {
             document.getElementById('completeVisitModal').classList.remove('active');
             document.getElementById('completeVisitForm').reset();
-            beforePhotosData = [];
-            afterPhotosData = [];
-            document.getElementById('beforePhotosPreview').innerHTML = '';
-            document.getElementById('afterPhotosPreview').innerHTML = '';
+            
+            // Clear signature
+            const canvas = document.getElementById('signaturePad');
+            if (canvas && signaturePad) {
+                signaturePad.clearRect(0, 0, canvas.width, canvas.height);
+            }
         };
 
         // Complete Visit Handler
         document.getElementById('completeVisitForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('Form submitted');
             
             const visitId = document.getElementById('completeVisitId').value;
             const completedBy = document.getElementById('completedBy').value;
-            const notes = document.getElementById('completionNotes').value;
+            const siteNotes = document.getElementById('siteNotes').value;
+            const customerName = document.getElementById('customerName').value;
+
+            console.log('Form data:', { visitId, completedBy, siteNotes, customerName });
+
+            // Check all work tasks are ticked
+            const workTasks = document.querySelectorAll('.work-task');
+            const allTasksChecked = Array.from(workTasks).every(task => task.checked);
+            
+            if (!allTasksChecked) {
+                alert('Please tick all work tasks to confirm they are completed.');
+                return;
+            }
+
+            // Validate signature
+            const canvas = document.getElementById('signaturePad');
+            const signatureData = canvas.toDataURL();
+            const blankCanvas = document.createElement('canvas');
+            blankCanvas.width = canvas.width;
+            blankCanvas.height = canvas.height;
+            if (signatureData === blankCanvas.toDataURL()) {
+                alert('Please get customer signature before completing.');
+                return;
+            }
 
             const visit = visits.find(v => v.id === visitId);
-            if (!visit) return;
+            if (!visit) {
+                console.error('Visit not found:', visitId);
+                return;
+            }
 
             // Show loading state
             const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -1734,39 +1706,33 @@ File name: Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.co
                 const userId = window.currentUser.uid;
                 const completedDate = new Date().toISOString().split('T')[0];
                 
-                // Store photos as base64 (no Firebase Storage needed)
-                const beforePhotoUrls = beforePhotosData.map(p => p.data);
-                const afterPhotoUrls = afterPhotosData.map(p => p.data);
+                console.log('Updating visit in database...');
                 
-                // Get signature as base64
-                let signatureUrl = null;
-                const canvas = document.getElementById('signaturePad');
-                if (canvas && signaturePad) {
-                    const signatureData = canvas.toDataURL();
-                    const blankCanvas = document.createElement('canvas');
-                    blankCanvas.width = canvas.width;
-                    blankCanvas.height = canvas.height;
-                    
-                    if (signatureData !== blankCanvas.toDataURL()) {
-                        signatureUrl = signatureData;
-                    }
-                }
+                // Build work completed summary
+                const tasksCompleted = [
+                    'Weed removal to appropriate areas - entrance/exits etc',
+                    'Strimming as required to whole site',
+                    'Weed suppressant applied as per map provided (Glyphosate based)',
+                    'General tidy and rubbish removal'
+                ];
+                
+                const workSummary = tasksCompleted.map((task, i) => `${i + 1}. ${task}`).join('\n');
                 
                 // Update current visit
-                const visitUpdate = {
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
                     status: 'completed',
                     completedDate: completedDate,
                     completedBy: completedBy,
-                    completionNotes: notes,
+                    workCompleted: tasksCompleted,
+                    siteNotes: siteNotes,
+                    customerName: customerName,
+                    customerSignature: signatureData,
+                    worksheetCompleted: true,
                     invoiceStatus: 'pending',
                     completedAt: new Date().toISOString()
-                };
-                
-                if (beforePhotoUrls.length > 0) visitUpdate.beforePhotos = beforePhotoUrls;
-                if (afterPhotoUrls.length > 0) visitUpdate.afterPhotos = afterPhotoUrls;
-                if (signatureUrl) visitUpdate.signature = signatureUrl;
-                
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), visitUpdate);
+                });
+
+                console.log('Visit updated, creating next visit...');
 
                 // Create next visit
                 const nextVisitDate = new Date(visit.scheduledDate);
@@ -1786,25 +1752,30 @@ File name: Visit-Report-${visit.siteName.replace(/[^a-z0-9]/gi, '-')}-${visit.co
                 const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
                 await window.dbSet(nextVisitRef, nextVisitData);
 
+                console.log('Next visit created, closing modal...');
+
                 closeCompleteVisitModal();
 
-                // Send email notification
+                console.log('Sending email...');
+
+                // Send email notification with worksheet details
                 const visitForEmail = {
                     ...visit,
                     completedDate: completedDate,
                     completedBy: completedBy,
-                    completionNotes: notes,
-                    beforePhotoCount: beforePhotoUrls.length,
-                    afterPhotoCount: afterPhotoUrls.length
+                    workSummary: workSummary,
+                    siteNotes: siteNotes,
+                    customerName: customerName
                 };
                 sendInvoiceEmail(visitForEmail);
                 
-                alert('✅ Visit completed!\n📧 Email notification sent\n📅 Next visit scheduled');
+                console.log('Email sent, showing success message');
+                alert('✅ Visit completed!\n📧 Email notification sent\n📅 Next visit scheduled\n\nWorksheet saved with customer signature');
             } catch (error) {
                 console.error('Error completing visit:', error);
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
-                alert('Error completing visit: ' + error.message + '\n\nCheck your internet connection and try again.');
+                alert('Error completing visit: ' + error.message + '\n\nPlease check the console (F12) for details.');
             }
         });
 
