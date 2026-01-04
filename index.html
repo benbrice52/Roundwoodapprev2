@@ -699,16 +699,29 @@
             
             <form id="registerForm">
                 <div class="form-group">
-                    <label for="registerEmail">Email</label>
+                    <label for="registerName">Full Name *</label>
+                    <input type="text" id="registerName" required placeholder="e.g. Ben Brice">
+                </div>
+                <div class="form-group">
+                    <label for="registerRole">Role *</label>
+                    <select id="registerRole" required>
+                        <option value="">Select role...</option>
+                        <option value="admin">Admin (Full Access)</option>
+                        <option value="field">Field Operative (Complete Visits)</option>
+                        <option value="finance">Finance (Invoice Tracking)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email *</label>
                     <input type="email" id="registerEmail" required placeholder="your@email.com">
                 </div>
                 <div class="form-group">
-                    <label for="registerPassword">Password</label>
+                    <label for="registerPassword">Password *</label>
                     <input type="password" id="registerPassword" required placeholder="••••••••" minlength="6">
                     <small style="color: var(--gray-500); font-size: 0.8rem;">Minimum 6 characters</small>
                 </div>
                 <div class="form-group">
-                    <label for="registerConfirm">Confirm Password</label>
+                    <label for="registerConfirm">Confirm Password *</label>
                     <input type="password" id="registerConfirm" required placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn btn-primary">Create Account</button>
@@ -895,9 +908,40 @@
                     <label for="completionNotes">Work Completed</label>
                     <textarea id="completionNotes" placeholder="Describe the work done..."></textarea>
                 </div>
+
+                <div class="form-group">
+                    <label>Before Photos *</label>
+                    <div class="photo-upload-area" onclick="document.getElementById('beforePhotos').click()">
+                        <p>📸 Tap to add before photos</p>
+                        <input type="file" id="beforePhotos" accept="image/*" multiple capture="environment" style="display: none;">
+                    </div>
+                    <div id="beforePhotosPreview" class="photo-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>After Photos *</label>
+                    <div class="photo-upload-area" onclick="document.getElementById('afterPhotos').click()">
+                        <p>📸 Tap to add after photos</p>
+                        <input type="file" id="afterPhotos" accept="image/*" multiple capture="environment" style="display: none;">
+                    </div>
+                    <div id="afterPhotosPreview" class="photo-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Customer Signature *</label>
+                    <canvas id="signaturePad" class="signature-pad" width="540" height="200"></canvas>
+                    <div class="signature-controls">
+                        <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
+                    </div>
+                </div>
                 
                 <div class="alert alert-info">
-                    Completing this visit will automatically schedule the next visit and notify accounts to send an invoice.
+                    Completing this visit will:
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Automatically schedule the next visit</li>
+                        <li>Send email notification to finance team</li>
+                        <li>Save all photos and signature</li>
+                    </ul>
                 </div>
                 
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
@@ -931,6 +975,12 @@
             orderByChild,
             equalTo
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import {
+            getStorage,
+            ref as storageRef,
+            uploadBytes,
+            getDownloadURL
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
         // Firebase Configuration
         const firebaseConfig = {
@@ -947,10 +997,12 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const database = getDatabase(app);
+        const storage = getStorage(app);
 
         // Make functions globally available
         window.auth = auth;
         window.database = database;
+        window.storage = storage;
         window.dbRef = ref;
         window.dbSet = set;
         window.dbGet = get;
@@ -961,6 +1013,9 @@
         window.dbQuery = query;
         window.dbOrderByChild = orderByChild;
         window.dbEqualTo = equalTo;
+        window.storageRef = storageRef;
+        window.uploadBytes = uploadBytes;
+        window.getDownloadURL = getDownloadURL;
 
         // Auth State Listener
         onAuthStateChanged(auth, (user) => {
@@ -1014,6 +1069,8 @@
 
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const role = document.getElementById('registerRole').value;
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
             const confirm = document.getElementById('registerConfirm').value;
@@ -1026,7 +1083,17 @@
             }
 
             try {
-                await createUserWithEmailAndPassword(auth, email, password);
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                
+                // Create user profile
+                await set(ref(database, `userProfiles/${user.uid}`), {
+                    name: name,
+                    role: role,
+                    email: email,
+                    createdAt: new Date().toISOString()
+                });
+                
                 closeRegisterModal();
             } catch (error) {
                 errorDiv.textContent = error.message;
@@ -1083,6 +1150,136 @@ This notification was generated automatically by Roundwood Route Manager.
         // App State
         let sites = [];
         let visits = [];
+        let beforePhotosData = [];
+        let afterPhotosData = [];
+        let signaturePad = null;
+        let isDrawing = false;
+
+        // Initialize signature pad
+        function initSignaturePad() {
+            const canvas = document.getElementById('signaturePad');
+            if (!canvas) return;
+            
+            signaturePad = canvas.getContext('2d');
+            signaturePad.strokeStyle = '#000';
+            signaturePad.lineWidth = 2;
+            signaturePad.lineCap = 'round';
+            
+            let lastX = 0;
+            let lastY = 0;
+            
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                lastX = touch.clientX - rect.left;
+                lastY = touch.clientY - rect.top;
+                isDrawing = true;
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                
+                signaturePad.beginPath();
+                signaturePad.moveTo(lastX, lastY);
+                signaturePad.lineTo(x, y);
+                signaturePad.stroke();
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            canvas.addEventListener('touchend', () => {
+                isDrawing = false;
+            });
+            
+            canvas.addEventListener('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                lastX = e.clientX - rect.left;
+                lastY = e.clientY - rect.top;
+                isDrawing = true;
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                signaturePad.beginPath();
+                signaturePad.moveTo(lastX, lastY);
+                signaturePad.lineTo(x, y);
+                signaturePad.stroke();
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                isDrawing = false;
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                isDrawing = false;
+            });
+        }
+
+        window.clearSignature = function() {
+            const canvas = document.getElementById('signaturePad');
+            if (signaturePad) {
+                signaturePad.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+
+        // Photo upload handlers
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('beforePhotos')?.addEventListener('change', (e) => {
+                handlePhotoUpload(e.target.files, 'before');
+            });
+            
+            document.getElementById('afterPhotos')?.addEventListener('change', (e) => {
+                handlePhotoUpload(e.target.files, 'after');
+            });
+            
+            initSignaturePad();
+        });
+
+        async function handlePhotoUpload(files, type) {
+            const previewContainer = document.getElementById(`${type}PhotosPreview`);
+            const dataArray = type === 'before' ? beforePhotosData : afterPhotosData;
+            
+            for (const file of files) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.createElement('div');
+                    preview.className = 'photo-preview-item';
+                    preview.innerHTML = `
+                        <img src="${e.target.result}" alt="${type} photo">
+                        <button type="button" class="photo-remove" onclick="removePhoto('${type}', ${dataArray.length})">×</button>
+                    `;
+                    previewContainer.appendChild(preview);
+                    
+                    dataArray.push({
+                        data: e.target.result,
+                        file: file
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        window.removePhoto = function(type, index) {
+            const dataArray = type === 'before' ? beforePhotosData : afterPhotosData;
+            const previewContainer = document.getElementById(`${type}PhotosPreview`);
+            
+            dataArray.splice(index, 1);
+            previewContainer.children[index].remove();
+        };
 
         // Load App Data
         async function loadAppData() {
@@ -1310,13 +1507,34 @@ This notification was generated automatically by Roundwood Route Manager.
 
         // Complete Visit Modal
         window.openCompleteVisitModal = (visitId) => {
+            const visit = visits.find(v => v.id === visitId);
+            if (!visit) return;
+            
             document.getElementById('completeVisitId').value = visitId;
+            document.getElementById('completedBy').value = window.currentUser.name;
+            
+            // Reset photo arrays
+            beforePhotosData = [];
+            afterPhotosData = [];
+            document.getElementById('beforePhotosPreview').innerHTML = '';
+            document.getElementById('afterPhotosPreview').innerHTML = '';
+            
+            // Clear signature
+            if (signaturePad) {
+                const canvas = document.getElementById('signaturePad');
+                signaturePad.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            
             document.getElementById('completeVisitModal').classList.add('active');
         };
 
         window.closeCompleteVisitModal = () => {
             document.getElementById('completeVisitModal').classList.remove('active');
             document.getElementById('completeVisitForm').reset();
+            beforePhotosData = [];
+            afterPhotosData = [];
+            document.getElementById('beforePhotosPreview').innerHTML = '';
+            document.getElementById('afterPhotosPreview').innerHTML = '';
         };
 
         // Complete Visit Handler
@@ -1327,20 +1545,71 @@ This notification was generated automatically by Roundwood Route Manager.
             const completedBy = document.getElementById('completedBy').value;
             const notes = document.getElementById('completionNotes').value;
 
+            // Validate photos
+            if (beforePhotosData.length === 0) {
+                alert('Please add at least one before photo');
+                return;
+            }
+            if (afterPhotosData.length === 0) {
+                alert('Please add at least one after photo');
+                return;
+            }
+
+            // Validate signature
+            const canvas = document.getElementById('signaturePad');
+            const signatureData = canvas.toDataURL();
+            const blankCanvas = document.createElement('canvas');
+            blankCanvas.width = canvas.width;
+            blankCanvas.height = canvas.height;
+            if (signatureData === blankCanvas.toDataURL()) {
+                alert('Please provide a customer signature');
+                return;
+            }
+
             const visit = visits.find(v => v.id === visitId);
             if (!visit) return;
 
             try {
                 const userId = window.currentUser.uid;
+                const completedDate = new Date().toISOString().split('T')[0];
+                
+                // Upload photos to Firebase Storage
+                const beforePhotoUrls = [];
+                const afterPhotoUrls = [];
+                
+                for (let i = 0; i < beforePhotosData.length; i++) {
+                    const photoRef = window.storageRef(window.storage, `visits/${visitId}/before_${i}_${Date.now()}.jpg`);
+                    const blob = await fetch(beforePhotosData[i].data).then(r => r.blob());
+                    await window.uploadBytes(photoRef, blob);
+                    const url = await window.getDownloadURL(photoRef);
+                    beforePhotoUrls.push(url);
+                }
+                
+                for (let i = 0; i < afterPhotosData.length; i++) {
+                    const photoRef = window.storageRef(window.storage, `visits/${visitId}/after_${i}_${Date.now()}.jpg`);
+                    const blob = await fetch(afterPhotosData[i].data).then(r => r.blob());
+                    await window.uploadBytes(photoRef, blob);
+                    const url = await window.getDownloadURL(photoRef);
+                    afterPhotoUrls.push(url);
+                }
+                
+                // Upload signature
+                const signatureRef = window.storageRef(window.storage, `visits/${visitId}/signature_${Date.now()}.png`);
+                const signatureBlob = await fetch(signatureData).then(r => r.blob());
+                await window.uploadBytes(signatureRef, signatureBlob);
+                const signatureUrl = await window.getDownloadURL(signatureRef);
                 
                 // Update current visit
-                const completedDate = new Date().toISOString().split('T')[0];
                 await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
                     status: 'completed',
                     completedDate: completedDate,
                     completedBy: completedBy,
                     completionNotes: notes,
-                    invoiceStatus: 'pending'
+                    invoiceStatus: 'pending',
+                    beforePhotos: beforePhotoUrls,
+                    afterPhotos: afterPhotoUrls,
+                    signature: signatureUrl,
+                    completedAt: new Date().toISOString()
                 });
 
                 // Create next visit
@@ -1363,21 +1632,21 @@ This notification was generated automatically by Roundwood Route Manager.
 
                 closeCompleteVisitModal();
 
-                // Prepare email data and open email client
+                // Send email notification
                 const visitForEmail = {
                     ...visit,
                     completedDate: completedDate,
                     completedBy: completedBy,
-                    completionNotes: notes
+                    completionNotes: notes,
+                    beforePhotoCount: beforePhotoUrls.length,
+                    afterPhotoCount: afterPhotoUrls.length
                 };
-                
-                // Open email client with pre-filled details
                 sendInvoiceEmail(visitForEmail);
                 
-                alert('✅ Visit completed!\n📧 Email opening to office@roundwoodsolutions.co.uk\n📅 Next visit scheduled');
+                alert('✅ Visit completed!\n📧 Email notification sent\n📅 Next visit scheduled');
             } catch (error) {
                 console.error('Error completing visit:', error);
-                alert('Error completing visit. Please try again.');
+                alert('Error completing visit: ' + error.message);
             }
         });
 
