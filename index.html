@@ -832,6 +832,7 @@
             <button onclick="showTab('sites')">📍 Sites</button>
             <button onclick="showTab('visits')">📅 Upcoming Visits <span class="badge" id="upcomingCount">0</span></button>
             <button onclick="showTab('invoices')">💰 Invoice Tracking <span class="badge" id="uninvoicedCount">0</span></button>
+            <button onclick="showTab('reviews')">⭐ Reviews</button>
             <button onclick="showTab('history')">📜 History</button>
         </nav>
 
@@ -896,6 +897,53 @@
                 </div>
             </div>
 
+            <!-- Reviews Tab -->
+            <div id="reviews" class="tab-pane">
+                <div class="card">
+                    <h2 class="card-title">⭐ Request Google Reviews</h2>
+                    <p style="color: var(--gray-600); margin-bottom: 1.5rem;">
+                        Send review requests to your customers. They'll get an email with a direct link to leave a Google review.
+                    </p>
+
+                    <form id="sendReviewForm" style="max-width: 600px;">
+                        <div class="form-group">
+                            <label for="reviewCustomerName">Customer Name *</label>
+                            <input type="text" id="reviewCustomerName" required placeholder="e.g. John Smith">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reviewCustomerEmail">Customer Email *</label>
+                            <input type="email" id="reviewCustomerEmail" required placeholder="customer@example.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reviewSiteName">Site Name *</label>
+                            <input type="text" id="reviewSiteName" required placeholder="e.g. Maidstone Office Park">
+                            <small style="color: var(--gray-500); font-size: 0.85rem;">This will appear in the email</small>
+                        </div>
+
+                        <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+                            <strong>📧 Email Preview:</strong><br>
+                            The customer will receive a professional email thanking them for choosing Roundwood Solutions and asking them to leave a Google review.
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            📧 Send Review Request
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card" style="margin-top: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem;">📊 Recent Review Requests</h3>
+                    <div id="reviewHistoryContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⭐</div>
+                            <div class="empty-state-text">No review requests sent yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- History Tab -->
             <div id="history" class="tab-pane">
                 <div class="card">
@@ -939,21 +987,14 @@
                     </div>
                 </div>
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="siteFrequency">Visit Frequency *</label>
-                        <select id="siteFrequency" required class="form-group input" style="width: 100%; padding: 0.75rem; border: 2px solid var(--gray-200); border-radius: 8px;">
-                            <option value="7">Weekly</option>
-                            <option value="14">Fortnightly</option>
-                            <option value="28">4-Weekly</option>
-                            <option value="30">Monthly</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="sitePrice">Price per Visit *</label>
-                        <input type="number" id="sitePrice" required placeholder="0.00" step="0.01" min="0">
-                    </div>
+                <div class="form-group">
+                    <label for="siteFrequency">Visit Frequency *</label>
+                    <select id="siteFrequency" required>
+                        <option value="7">Weekly</option>
+                        <option value="14">Fortnightly</option>
+                        <option value="28">4-Weekly</option>
+                        <option value="30">Monthly</option>
+                    </select>
                 </div>
                 
                 <div class="form-group">
@@ -995,37 +1036,38 @@
                 </div>
 
                 <div class="card" style="background: var(--gray-50); margin-bottom: 1.5rem;">
-                    <h3 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.125rem;">Work Completed - Tick all that apply *</h3>
+                    <h3 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.125rem;">Work Completed - Tick what applies</h3>
                     
                     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: white; border-radius: 8px; border: 2px solid var(--gray-200); transition: all 0.2s;">
-                            <input type="checkbox" class="work-task" required style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                            <input type="checkbox" class="work-task" style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
                             <span style="flex: 1;">
                                 <strong>Weed removal</strong> to appropriate areas - entrance/exits etc
                             </span>
                         </label>
 
                         <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: white; border-radius: 8px; border: 2px solid var(--gray-200); transition: all 0.2s;">
-                            <input type="checkbox" class="work-task" required style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                            <input type="checkbox" class="work-task" style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
                             <span style="flex: 1;">
                                 <strong>Strimming</strong> as required to whole site
                             </span>
                         </label>
 
                         <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: white; border-radius: 8px; border: 2px solid var(--gray-200); transition: all 0.2s;">
-                            <input type="checkbox" class="work-task" required style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                            <input type="checkbox" class="work-task" style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
                             <span style="flex: 1;">
                                 <strong>Weed suppressant</strong> applied as per map provided (Glyphosate based)
                             </span>
                         </label>
 
                         <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: white; border-radius: 8px; border: 2px solid var(--gray-200); transition: all 0.2s;">
-                            <input type="checkbox" class="work-task" required style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                            <input type="checkbox" class="work-task" style="width: 20px; height: 20px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
                             <span style="flex: 1;">
                                 <strong>General tidy</strong> and rubbish removal
                             </span>
                         </label>
                     </div>
+                    <small style="color: var(--gray-500); font-size: 0.85rem; margin-top: 0.75rem; display: block;">Tick only the tasks that were completed for this visit</small>
                 </div>
                 
                 <div class="form-group">
@@ -1055,10 +1097,13 @@
                 <div class="alert alert-info">
                     Completing this visit will:
                     <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                        <li>Generate a PDF worksheet with customer signature</li>
+                        <li>Save worksheet with customer signature</li>
                         <li>Automatically schedule the next visit</li>
                         <li>Send email notification to finance team</li>
                     </ul>
+                    <small style="display: block; margin-top: 0.75rem; color: var(--gray-600);">
+                        💡 Tip: Use the <strong>⭐ Reviews</strong> tab to send review requests later
+                    </small>
                 </div>
                 
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
@@ -1232,6 +1277,39 @@
 
     <script>
         // Send Invoice Request Email using mailto
+        function sendReviewRequest(customerEmail, customerName, siteName) {
+            const emailSubject = 'How was our service at ' + siteName + '?';
+            
+            const emailBody = `
+Hi ${customerName},
+
+Thank you for choosing Roundwood Solutions for your grounds maintenance at ${siteName}.
+
+We'd really appreciate it if you could take 2 minutes to leave us a review on Google. Your feedback helps us improve and helps other businesses find quality grounds maintenance services.
+
+Leave a review here: https://g.page/r/CdjsCHn8W_UHEAI/review
+
+Thank you for your time and trust in our services.
+
+Best regards,
+
+Ben Brice
+Director
+Roundwood Solutions Limited
+
+📞 07545 642021
+📧 office@roundwoodsolutions.co.uk
+🌐 www.roundwoodsolutions.co.uk
+
+🌳 Commercial Landscaping and Grounds Maintenance
+            `.trim();
+
+            const mailto = `mailto:${customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            // Return the mailto link so we can show it to the user
+            return mailto;
+        }
+
         function sendInvoiceEmail(visit) {
             const emailSubject = `Invoice Required: ${visit.siteName} - Completed ${visit.completedDate}`;
             
@@ -1442,6 +1520,9 @@ This notification was generated automatically by Roundwood Route Manager.
                 renderTodayVisits();
                 updateStats();
             });
+            
+            // Load review history
+            loadReviewHistory();
         }
 
         // Tab Navigation
@@ -1481,7 +1562,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 contact: document.getElementById('siteContact').value,
                 phone: document.getElementById('sitePhone').value,
                 frequency: parseInt(document.getElementById('siteFrequency').value),
-                price: parseFloat(document.getElementById('sitePrice').value),
+                price: 0, // Price managed separately by admin
                 firstVisit: document.getElementById('siteFirstVisit').value,
                 notes: document.getElementById('siteNotes').value,
                 createdAt: new Date().toISOString()
@@ -1508,11 +1589,50 @@ This notification was generated automatically by Roundwood Route Manager.
                 await window.dbSet(visitRef, visitData);
 
                 closeAddSiteModal();
+                alert('✅ Site added successfully!');
             } catch (error) {
                 console.error('Error adding site:', error);
                 alert('Error adding site. Please try again.');
             }
         });
+
+        // Delete Site
+        window.deleteSite = async (siteId) => {
+            console.log('Delete site called with ID:', siteId);
+            
+            const site = sites.find(s => s.id === siteId);
+            if (!site) {
+                console.error('Site not found:', siteId);
+                alert('Site not found.');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete "${site.name}"?\n\nThis will also delete all associated visits (past and future).\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const userId = window.currentUser.uid;
+                console.log('Deleting site:', site.name);
+
+                // Delete the site
+                await window.dbRemove(window.dbRef(window.database, `users/${userId}/sites/${siteId}`));
+                console.log('Site deleted from database');
+
+                // Delete all visits for this site
+                const siteVisits = visits.filter(v => v.siteId === siteId);
+                console.log('Deleting', siteVisits.length, 'visits');
+                
+                for (const visit of siteVisits) {
+                    await window.dbRemove(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`));
+                }
+
+                alert(`✅ Site "${site.name}" and ${siteVisits.length} associated visit(s) deleted successfully.`);
+            } catch (error) {
+                console.error('Error deleting site:', error);
+                alert('Error deleting site: ' + error.message);
+            }
+        };
 
         // Render Sites
         function renderSites() {
@@ -1545,7 +1665,12 @@ This notification was generated automatically by Roundwood Route Manager.
                                 <div class="site-name">${site.name}</div>
                                 <div class="site-address">${site.address}</div>
                             </div>
-                            <span class="badge-frequency">${frequencyText}</span>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="badge-frequency">${frequencyText}</span>
+                                <button class="btn btn-danger" onclick="deleteSite('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                    🗑️ Delete
+                                </button>
+                            </div>
                         </div>
                         <div class="site-meta">
                             ${site.contact ? `
@@ -1670,14 +1795,8 @@ This notification was generated automatically by Roundwood Route Manager.
 
             console.log('Form data:', { visitId, completedBy, siteNotes, customerName });
 
-            // Check all work tasks are ticked
+            // Get which tasks were completed
             const workTasks = document.querySelectorAll('.work-task');
-            const allTasksChecked = Array.from(workTasks).every(task => task.checked);
-            
-            if (!allTasksChecked) {
-                alert('Please tick all work tasks to confirm they are completed.');
-                return;
-            }
 
             // Validate signature
             const canvas = document.getElementById('signaturePad');
@@ -1708,15 +1827,24 @@ This notification was generated automatically by Roundwood Route Manager.
                 
                 console.log('Updating visit in database...');
                 
-                // Build work completed summary
-                const tasksCompleted = [
+                // Build work completed summary - only include checked tasks
+                const allTaskLabels = [
                     'Weed removal to appropriate areas - entrance/exits etc',
                     'Strimming as required to whole site',
                     'Weed suppressant applied as per map provided (Glyphosate based)',
                     'General tidy and rubbish removal'
                 ];
                 
-                const workSummary = tasksCompleted.map((task, i) => `${i + 1}. ${task}`).join('\n');
+                const tasksCompleted = [];
+                workTasks.forEach((checkbox, index) => {
+                    if (checkbox.checked) {
+                        tasksCompleted.push(allTaskLabels[index]);
+                    }
+                });
+                
+                const workSummary = tasksCompleted.length > 0 
+                    ? tasksCompleted.map((task, i) => `${i + 1}. ${task}`).join('\n')
+                    : 'No standard tasks - see site notes';
                 
                 // Update current visit
                 await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
@@ -1778,6 +1906,101 @@ This notification was generated automatically by Roundwood Route Manager.
                 alert('Error completing visit: ' + error.message + '\n\nPlease check the console (F12) for details.');
             }
         });
+
+        // Send Review Request Form
+        document.getElementById('sendReviewForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const customerName = document.getElementById('reviewCustomerName').value;
+            const customerEmail = document.getElementById('reviewCustomerEmail').value;
+            const siteName = document.getElementById('reviewSiteName').value;
+            
+            // Generate the review email
+            const reviewLink = sendReviewRequest(customerEmail, customerName, siteName);
+            
+            // Open the email
+            window.location.href = reviewLink;
+            
+            // Save to history (in database)
+            const userId = window.currentUser.uid;
+            const reviewData = {
+                customerName: customerName,
+                customerEmail: customerEmail,
+                siteName: siteName,
+                sentDate: new Date().toISOString(),
+                sentBy: window.currentUser.name
+            };
+            
+            const reviewRef = window.dbPush(window.dbRef(window.database, `users/${userId}/reviewRequests`));
+            window.dbSet(reviewRef, reviewData).then(() => {
+                // Clear form
+                document.getElementById('sendReviewForm').reset();
+                
+                // Show success message
+                alert('✅ Review request email opened!\n\nSend the email from your email client to complete.');
+                
+                // Reload review history
+                loadReviewHistory();
+            }).catch(error => {
+                console.error('Error saving review request:', error);
+            });
+        });
+
+        // Load Review History
+        function loadReviewHistory() {
+            const userId = window.currentUser.uid;
+            const reviewsRef = window.dbRef(window.database, `users/${userId}/reviewRequests`);
+            
+            window.dbOnValue(reviewsRef, (snapshot) => {
+                const container = document.getElementById('reviewHistoryContainer');
+                const reviews = [];
+                
+                snapshot.forEach((childSnapshot) => {
+                    reviews.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                
+                if (reviews.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⭐</div>
+                            <div class="empty-state-text">No review requests sent yet</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Sort by most recent first
+                reviews.sort((a, b) => new Date(b.sentDate) - new Date(a.sentDate));
+                
+                // Show only last 10
+                const recentReviews = reviews.slice(0, 10);
+                
+                container.innerHTML = recentReviews.map(review => `
+                    <div style="padding: 1rem; background: var(--gray-50); border-radius: 8px; margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <div style="font-weight: 600;">${review.customerName}</div>
+                                <div style="font-size: 0.9rem; color: var(--gray-600);">${review.customerEmail}</div>
+                                <div style="font-size: 0.85rem; color: var(--gray-500); margin-top: 0.25rem;">
+                                    Site: ${review.siteName}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.85rem; color: var(--gray-500);">
+                                    ${new Date(review.sentDate).toLocaleDateString('en-GB')}
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">
+                                    by ${review.sentBy}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            });
+        }
 
         // Mark Invoice Sent
         window.markInvoiceSent = async (visitId) => {
