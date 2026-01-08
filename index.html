@@ -1076,6 +1076,57 @@
         </div>
     </div>
 
+    <!-- Pause Contract Modal -->
+    <div id="pauseContractModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">⏸️ Pause Contract</h2>
+                <button class="btn-close" onclick="closePauseContractModal()">×</button>
+            </div>
+            
+            <form id="pauseContractForm">
+                <input type="hidden" id="pauseSiteId">
+                
+                <div class="alert alert-warning">
+                    <strong>⚠️ Note:</strong> Pausing a contract will:
+                    <ul style="margin: 0.5rem 0 0 1.5rem;">
+                        <li>Hide all pending visits for this site</li>
+                        <li>Stop automatic scheduling of new visits</li>
+                        <li>Keep the site in your system (not deleted)</li>
+                    </ul>
+                </div>
+
+                <div class="form-group">
+                    <label for="pauseType">Pause Duration *</label>
+                    <select id="pauseType" required onchange="handlePauseTypeChange()">
+                        <option value="">-- Select --</option>
+                        <option value="indefinite">Until further notice (indefinite)</option>
+                        <option value="until-date">Until specific date</option>
+                    </select>
+                </div>
+
+                <!-- Date picker (shown only if "until-date" is selected) -->
+                <div id="pauseDateField" style="display: none;">
+                    <div class="form-group">
+                        <label for="pauseUntilDate">Resume Date *</label>
+                        <input type="date" id="pauseUntilDate">
+                        <small style="color: var(--gray-500); font-size: 0.85rem;">Contract will automatically resume on this date</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pauseReason">Reason (Optional)</label>
+                    <textarea id="pauseReason" placeholder="e.g., Winter break, Customer request, Budget constraints..." rows="2"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closePauseContractModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-warning" style="flex: 1; background: #f59e0b; color: white;">⏸️ Pause Contract</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit Contract Notes Modal -->
     <div id="editContractModal" class="modal">
         <div class="modal-content">
@@ -1608,14 +1659,40 @@ This notification was generated automatically by Roundwood Route Manager.
             
             // Listen to sites
             const sitesRef = window.dbRef(window.database, `users/${userId}/sites`);
-            window.dbOnValue(sitesRef, (snapshot) => {
+            window.dbOnValue(sitesRef, async (snapshot) => {
                 sites = [];
+                const today = new Date().toISOString().split('T')[0];
+                
                 snapshot.forEach((childSnapshot) => {
                     sites.push({
                         id: childSnapshot.key,
                         ...childSnapshot.val()
                     });
                 });
+                
+                // Check for paused contracts that should auto-resume
+                for (const site of sites) {
+                    if (site.paused && site.pausedUntil && site.pausedUntil <= today) {
+                        console.log('Auto-resuming contract:', site.name);
+                        
+                        // Update site to active
+                        await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${site.id}`), {
+                            paused: false,
+                            pausedDate: null,
+                            pausedUntil: null,
+                            pauseReason: null
+                        });
+                        
+                        // Unhide visits
+                        const siteVisits = visits.filter(v => v.siteId === site.id && v.hidden);
+                        for (const visit of siteVisits) {
+                            await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                                hidden: false
+                            });
+                        }
+                    }
+                }
+                
                 renderSites();
                 updateStats();
             });
@@ -1817,9 +1894,23 @@ This notification was generated automatically by Roundwood Route Manager.
                             <div>
                                 <div class="site-name">${site.name}</div>
                                 <div class="site-address">${site.address}</div>
+                                ${site.paused ? `
+                                    <div style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; margin-top: 0.25rem;">
+                                        ⏸️ Paused${site.pausedUntil ? ` until ${new Date(site.pausedUntil).toLocaleDateString('en-GB')}` : ' indefinitely'}
+                                    </div>
+                                ` : ''}
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <span class="badge-frequency">${frequencyText}</span>
+                                ${site.paused ? `
+                                    <button class="btn btn-success" onclick="resumeContract('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                        ▶️ Resume
+                                    </button>
+                                ` : `
+                                    <button class="btn btn-warning" onclick="pauseContract('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem; background: #f59e0b; color: white;">
+                                        ⏸️ Pause
+                                    </button>
+                                `}
                                 <button class="btn btn-secondary" onclick="editContractNotes('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
                                     📝 Edit Contract
                                 </button>
@@ -1869,7 +1960,7 @@ This notification was generated automatically by Roundwood Route Manager.
             const today = new Date().toISOString().split('T')[0];
             
             const upcomingVisits = visits
-                .filter(v => v.status === 'pending')
+                .filter(v => v.status === 'pending' && !v.hidden)
                 .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
 
             if (upcomingVisits.length === 0) {
@@ -1877,7 +1968,7 @@ This notification was generated automatically by Roundwood Route Manager.
                     <div class="empty-state">
                         <div class="empty-state-icon">📅</div>
                         <div class="empty-state-title">No upcoming visits</div>
-                        <div class="empty-state-text">All visits are completed or there are no sites yet</div>
+                        <div class="empty-state-text">All visits are completed, hidden, or there are no sites yet</div>
                     </div>
                 `;
                 return;
@@ -1916,6 +2007,114 @@ This notification was generated automatically by Roundwood Route Manager.
         }
 
         // Complete Visit Modal
+        // Pause Contract
+        window.pauseContract = (siteId) => {
+            const site = sites.find(s => s.id === siteId);
+            if (!site) return;
+            
+            document.getElementById('pauseSiteId').value = siteId;
+            document.getElementById('pauseContractModal').classList.add('active');
+        };
+
+        window.closePauseContractModal = () => {
+            document.getElementById('pauseContractModal').classList.remove('active');
+            document.getElementById('pauseContractForm').reset();
+            document.getElementById('pauseDateField').style.display = 'none';
+        };
+
+        window.handlePauseTypeChange = () => {
+            const pauseType = document.getElementById('pauseType').value;
+            const dateField = document.getElementById('pauseDateField');
+            const dateInput = document.getElementById('pauseUntilDate');
+            
+            if (pauseType === 'until-date') {
+                dateField.style.display = 'block';
+                dateInput.required = true;
+                // Set min date to tomorrow
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                dateInput.min = tomorrow.toISOString().split('T')[0];
+            } else {
+                dateField.style.display = 'none';
+                dateInput.required = false;
+            }
+        };
+
+        document.getElementById('pauseContractForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const siteId = document.getElementById('pauseSiteId').value;
+            const pauseType = document.getElementById('pauseType').value;
+            const pauseUntilDate = document.getElementById('pauseUntilDate').value;
+            const pauseReason = document.getElementById('pauseReason').value;
+            
+            try {
+                const userId = window.currentUser.uid;
+                
+                // Update site to paused status
+                const pauseData = {
+                    paused: true,
+                    pausedDate: new Date().toISOString(),
+                    pauseReason: pauseReason
+                };
+                
+                if (pauseType === 'until-date' && pauseUntilDate) {
+                    pauseData.pausedUntil = pauseUntilDate;
+                }
+                
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), pauseData);
+                
+                // Hide all pending visits for this site
+                const siteVisits = visits.filter(v => v.siteId === siteId && v.status === 'pending');
+                for (const visit of siteVisits) {
+                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                        hidden: true
+                    });
+                }
+                
+                closePauseContractModal();
+                alert(`✅ Contract paused ${pauseType === 'until-date' ? 'until ' + new Date(pauseUntilDate).toLocaleDateString('en-GB') : 'indefinitely'}.\n\nAll pending visits have been hidden.`);
+            } catch (error) {
+                console.error('Error pausing contract:', error);
+                alert('Error pausing contract. Please try again.');
+            }
+        });
+
+        // Resume Contract
+        window.resumeContract = async (siteId) => {
+            const site = sites.find(s => s.id === siteId);
+            if (!site) return;
+            
+            if (!confirm(`Resume contract for "${site.name}"?\n\nThis will unhide all visits and resume automatic scheduling.`)) {
+                return;
+            }
+            
+            try {
+                const userId = window.currentUser.uid;
+                
+                // Update site to active status
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), {
+                    paused: false,
+                    pausedDate: null,
+                    pausedUntil: null,
+                    pauseReason: null
+                });
+                
+                // Unhide all visits for this site
+                const siteVisits = visits.filter(v => v.siteId === siteId && v.hidden);
+                for (const visit of siteVisits) {
+                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                        hidden: false
+                    });
+                }
+                
+                alert('✅ Contract resumed successfully!\n\nAll visits are now visible again.');
+            } catch (error) {
+                console.error('Error resuming contract:', error);
+                alert('Error resuming contract. Please try again.');
+            }
+        };
+
         // Edit Contract Notes
         window.editContractNotes = (siteId) => {
             const site = sites.find(s => s.id === siteId);
