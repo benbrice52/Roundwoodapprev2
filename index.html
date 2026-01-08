@@ -1130,30 +1130,109 @@
         </div>
     </div>
 
-    <!-- Edit Contract Notes Modal -->
-    <div id="editContractModal" class="modal">
-        <div class="modal-content">
+    <!-- Edit Site Modal -->
+    <div id="editSiteModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h2 class="modal-title">Edit Contract Notes</h2>
-                <button class="btn-close" onclick="closeEditContractModal()">×</button>
+                <h2 class="modal-title">✏️ Edit Site</h2>
+                <button class="btn-close" onclick="closeEditSiteModal()">×</button>
             </div>
             
-            <form id="editContractForm">
+            <form id="editSiteForm">
                 <input type="hidden" id="editSiteId">
                 
-                <div class="alert alert-info" style="margin-bottom: 1rem;">
-                    <strong>💡 Tip:</strong> These notes will be visible to field staff when completing visits
+                <div class="form-group">
+                    <label for="editSiteName">Site Name *</label>
+                    <input type="text" id="editSiteName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editSiteAddress">Address *</label>
+                    <input type="text" id="editSiteAddress" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editSiteContact">Contact Name</label>
+                        <input type="text" id="editSiteContact">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editSitePhone">Phone</label>
+                        <input type="tel" id="editSitePhone">
+                    </div>
                 </div>
 
                 <div class="form-group">
+                    <label for="editSiteFrequency">Visit Schedule *</label>
+                    <select id="editSiteFrequency" required onchange="handleEditFrequencyChange()">
+                        <option value="">-- Select Schedule Type --</option>
+                        <optgroup label="Year-Round">
+                            <option value="7">Weekly</option>
+                            <option value="14">Fortnightly</option>
+                            <option value="28">4-Weekly</option>
+                            <option value="30">Monthly</option>
+                            <option value="91">Quarterly (Every 3 months)</option>
+                        </optgroup>
+                        <optgroup label="Seasonal">
+                            <option value="seasonal">Seasonal Schedule (Summer/Winter)</option>
+                        </optgroup>
+                        <optgroup label="Custom">
+                            <option value="custom">Custom Schedule (Manual dates)</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- Seasonal Schedule Fields (Hidden by default) -->
+                <div id="editSeasonalFields" style="display: none;">
+                    <div class="alert alert-info" style="margin-bottom: 1rem;">
+                        <strong>Seasonal Schedule:</strong> Set different frequencies for summer and winter periods
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editSummerFrequency">Summer Frequency *</label>
+                            <select id="editSummerFrequency">
+                                <option value="7">Weekly</option>
+                                <option value="14">Fortnightly</option>
+                                <option value="28">4-Weekly</option>
+                                <option value="30">Monthly</option>
+                                <option value="91">Quarterly</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editWinterFrequency">Winter Frequency *</label>
+                            <select id="editWinterFrequency">
+                                <option value="7">Weekly</option>
+                                <option value="14">Fortnightly</option>
+                                <option value="28">4-Weekly</option>
+                                <option value="30">Monthly</option>
+                                <option value="91">Quarterly</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Schedule Notice -->
+                <div id="editCustomFields" style="display: none;">
+                    <div class="alert alert-warning">
+                        <strong>Custom Schedule:</strong> You'll manually set the next visit date each time you complete a visit.
+                    </div>
+                </div>
+                
+                <div class="form-group">
                     <label for="editContractNotes">Key Contract Notes</label>
-                    <textarea id="editContractNotes" rows="5" placeholder="e.g., Grass cutting only, No weed control, 3 visits per year including weed suppressant..."></textarea>
-                    <small style="color: var(--gray-500); font-size: 0.85rem;">Important details about what's included/excluded in this contract</small>
+                    <textarea id="editContractNotes" rows="3" placeholder="e.g., Grass cutting only, No weed control, 3 visits per year..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="editSiteNotes">Site Access Notes</label>
+                    <textarea id="editSiteNotes" rows="2" placeholder="Access codes, parking, keys..."></textarea>
                 </div>
                 
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
-                    <button type="button" class="btn btn-secondary" onclick="closeEditContractModal()" style="flex: 1;">Cancel</button>
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">💾 Save Contract Notes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditSiteModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">💾 Save Changes</button>
                 </div>
             </form>
         </div>
@@ -1915,8 +1994,8 @@ This notification was generated automatically by Roundwood Route Manager.
                                         ⏸️ Pause
                                     </button>
                                 `}
-                                <button class="btn btn-secondary" onclick="editContractNotes('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
-                                    📝 Edit Contract
+                                <button class="btn btn-secondary" onclick="editSite('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                    ✏️ Edit Site
                                 </button>
                                 <button class="btn btn-danger" onclick="deleteSite('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
                                     🗑️ Delete
@@ -2119,39 +2198,116 @@ This notification was generated automatically by Roundwood Route Manager.
             }
         };
 
-        // Edit Contract Notes
-        window.editContractNotes = (siteId) => {
+        // Edit Site
+        window.editSite = (siteId) => {
             const site = sites.find(s => s.id === siteId);
             if (!site) return;
             
             document.getElementById('editSiteId').value = siteId;
+            document.getElementById('editSiteName').value = site.name;
+            document.getElementById('editSiteAddress').value = site.address;
+            document.getElementById('editSiteContact').value = site.contact || '';
+            document.getElementById('editSitePhone').value = site.phone || '';
             document.getElementById('editContractNotes').value = site.contractNotes || '';
-            document.getElementById('editContractModal').classList.add('active');
+            document.getElementById('editSiteNotes').value = site.notes || '';
+            
+            // Set schedule type
+            if (site.scheduleType === 'seasonal') {
+                document.getElementById('editSiteFrequency').value = 'seasonal';
+                document.getElementById('editSeasonalFields').style.display = 'block';
+                document.getElementById('editCustomFields').style.display = 'none';
+                document.getElementById('editSummerFrequency').value = site.summerFrequency || 14;
+                document.getElementById('editWinterFrequency').value = site.winterFrequency || 28;
+            } else if (site.scheduleType === 'custom') {
+                document.getElementById('editSiteFrequency').value = 'custom';
+                document.getElementById('editSeasonalFields').style.display = 'none';
+                document.getElementById('editCustomFields').style.display = 'block';
+            } else {
+                document.getElementById('editSiteFrequency').value = site.frequency || 14;
+                document.getElementById('editSeasonalFields').style.display = 'none';
+                document.getElementById('editCustomFields').style.display = 'none';
+            }
+            
+            document.getElementById('editSiteModal').classList.add('active');
         };
 
-        window.closeEditContractModal = () => {
-            document.getElementById('editContractModal').classList.remove('active');
-            document.getElementById('editContractForm').reset();
+        window.closeEditSiteModal = () => {
+            document.getElementById('editSiteModal').classList.remove('active');
+            document.getElementById('editSiteForm').reset();
+            document.getElementById('editSeasonalFields').style.display = 'none';
+            document.getElementById('editCustomFields').style.display = 'none';
         };
 
-        // Save Contract Notes
-        document.getElementById('editContractForm').addEventListener('submit', async (e) => {
+        // Handle edit frequency change
+        window.handleEditFrequencyChange = () => {
+            const frequency = document.getElementById('editSiteFrequency').value;
+            const seasonalFields = document.getElementById('editSeasonalFields');
+            const customFields = document.getElementById('editCustomFields');
+            
+            if (frequency === 'seasonal') {
+                seasonalFields.style.display = 'block';
+                customFields.style.display = 'none';
+            } else if (frequency === 'custom') {
+                seasonalFields.style.display = 'none';
+                customFields.style.display = 'block';
+            } else {
+                seasonalFields.style.display = 'none';
+                customFields.style.display = 'none';
+            }
+        };
+
+        // Save Site Changes
+        document.getElementById('editSiteForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const siteId = document.getElementById('editSiteId').value;
-            const contractNotes = document.getElementById('editContractNotes').value;
+            const frequencyType = document.getElementById('editSiteFrequency').value;
+            
+            const updateData = {
+                name: document.getElementById('editSiteName').value,
+                address: document.getElementById('editSiteAddress').value,
+                contact: document.getElementById('editSiteContact').value,
+                phone: document.getElementById('editSitePhone').value,
+                contractNotes: document.getElementById('editContractNotes').value,
+                notes: document.getElementById('editSiteNotes').value
+            };
+
+            // Handle different schedule types
+            if (frequencyType === 'seasonal') {
+                updateData.scheduleType = 'seasonal';
+                updateData.summerFrequency = parseInt(document.getElementById('editSummerFrequency').value);
+                updateData.winterFrequency = parseInt(document.getElementById('editWinterFrequency').value);
+                // Determine current season and set frequency
+                const currentMonth = new Date().getMonth() + 1;
+                updateData.frequency = (currentMonth >= 3 && currentMonth <= 10) ? updateData.summerFrequency : updateData.winterFrequency;
+            } else if (frequencyType === 'custom') {
+                updateData.scheduleType = 'custom';
+                updateData.frequency = 0;
+            } else {
+                updateData.scheduleType = 'regular';
+                updateData.frequency = parseInt(frequencyType);
+            }
             
             try {
                 const userId = window.currentUser.uid;
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), {
-                    contractNotes: contractNotes
-                });
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), updateData);
                 
-                closeEditContractModal();
-                alert('✅ Contract notes updated successfully!');
+                // Update all pending visits for this site with new schedule info
+                const siteVisits = visits.filter(v => v.siteId === siteId && v.status === 'pending');
+                for (const visit of siteVisits) {
+                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                        siteName: updateData.name,
+                        siteAddress: updateData.address,
+                        frequency: updateData.frequency,
+                        scheduleType: updateData.scheduleType
+                    });
+                }
+                
+                closeEditSiteModal();
+                alert('✅ Site updated successfully!\n\nAll pending visits have been updated with the new details.');
             } catch (error) {
-                console.error('Error updating contract notes:', error);
-                alert('Error updating contract notes. Please try again.');
+                console.error('Error updating site:', error);
+                alert('Error updating site. Please try again.');
             }
         });
 
