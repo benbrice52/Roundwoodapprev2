@@ -996,6 +996,7 @@
                             <option value="14">Fortnightly</option>
                             <option value="28">4-Weekly</option>
                             <option value="30">Monthly</option>
+                            <option value="91">Quarterly (Every 3 months)</option>
                         </optgroup>
                         <optgroup label="Seasonal">
                             <option value="seasonal">Seasonal Schedule (Summer/Winter)</option>
@@ -1020,6 +1021,7 @@
                                 <option value="14" selected>Fortnightly</option>
                                 <option value="28">4-Weekly</option>
                                 <option value="30">Monthly</option>
+                                <option value="91">Quarterly</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1036,6 +1038,7 @@
                                 <option value="14">Fortnightly</option>
                                 <option value="28" selected>4-Weekly</option>
                                 <option value="30">Monthly</option>
+                                <option value="91">Quarterly</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1885,7 +1888,8 @@ This notification was generated automatically by Roundwood Route Manager.
                     7: 'Weekly',
                     14: 'Fortnightly',
                     28: '4-Weekly',
-                    30: 'Monthly'
+                    30: 'Monthly',
+                    91: 'Quarterly'
                 }[site.frequency] || `Every ${site.frequency} days`;
 
                 return `
