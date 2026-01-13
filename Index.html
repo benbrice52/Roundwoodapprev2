@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roundwood Route Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2d5016;
+            --primary-light: #5a8a3a;
+            --primary-dark: #1a3009;
+            --accent: #8fbc5a;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.5;
+            padding-bottom: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* Header */
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-email {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            background: white;
+            border-bottom: 2px solid var(--gray-200);
+            position: sticky;
+            top: 73px;
+            z-index: 90;
+            display: flex;
+            gap: 0;
+            overflow-x: auto;
+            padding: 0 1rem;
+        }
+
+        .nav-tabs button {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: transparent;
+            color: var(--gray-600);
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .nav-tabs button:hover {
+            color: var(--primary);
+            background: var(--gray-50);
+        }
+
+        .nav-tabs button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-800);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-300);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-logout {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--gray-900);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.1);
+        }
+
+        /* Login Screen */
+        #loginScreen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .login-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-card h2 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 2rem;
+        }
+
+        /* Calculator Specific Styles */
+        .calc-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+
+        .calc-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-light);
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .calc-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .calc-input {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 2px solid var(--gray-300);
+        }
+
+        .calc-input.preset {
+            background: #fff3e0;
+            border-color: #ff9800;
+        }
+
+        .calc-result {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 2px solid #2196f3;
+        }
+
+        .calc-label {
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .calc-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .calc-unit {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin-left: 0.5rem;
+        }
+
+        .saved-calc-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--gray-200);
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .saved-calc-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .saved-calc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .saved-calc-title {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .saved-calc-date {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+        }
+
+        .saved-calc-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #dc2626;
+        }
+
+        #mainApp {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray-500);
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <div class="login-card">
+            <h2>🌳 Roundwood Manager</h2>
+            <div id="loginError" style="display: none;" class="alert alert-error"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp">
+        <header class="header">
+            <div class="header-content">
+                <div>
+                    <h1>🌳 Roundwood Manager</h1>
+                </div>
+                <div class="user-info">
+                    <span class="user-email" id="userEmail"></span>
+                    <button class="btn-logout" onclick="logout()">Sign Out</button>
+                </div>
+            </div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="active" onclick="showTab('calculator')">📐 Calibration Calculator</button>
+            <button onclick="showTab('saved')">💾 Saved Calculations</button>
+        </nav>
+
+        <div class="container">
+            <!-- Calculator Tab -->
+            <div id="calculatorTab" class="tab-content active">
+                <div class="card">
+                    <h2 class="card-title">Sprayer Calibration Calculator</h2>
+                    
+                    <div id="calcAlert" style="display: none;"></div>
+
+                    <!-- Save Calculation Name -->
+                    <div class="form-group">
+                        <label for="calcName">Calculation Name (optional)</label>
+                        <input type="text" id="calcName" placeholder="e.g. Front Car Park - School Site">
+                    </div>
+
+                    <!-- Calibration Setup -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Calibration Setup</div>
+                        <div class="calc-grid">
+                            <div class="calc-input preset">
+                                <div class="calc-label">Seconds to spray 100m (preset)</div>
+                                <input type="number" id="seconds" value="90" step="1" style="width: 100%; padding: 0.5rem; border: 1px solid #ff9800; border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">seconds</div>
+                            </div>
+                            <div class="calc-input">
+                                <div class="calc-label">Nozzle output</div>
+                                <input type="number" id="nozzleOutput" step="0.1" placeholder="0.0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">LPM</div>
+                            </div>
+                            <div class="calc-input preset">
+                                <div class="calc-label">Strip width (preset)</div>
+                                <input type="number" id="stripWidth" value="1" step="0.1" style="width: 100%; padding: 0.5rem; border: 1px solid #ff9800; border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">meters</div>
+                            </div>
+                            <div class="calc-input preset">
+                                <div class="calc-label">Sprayer capacity (preset)</div>
+                                <input type="number" id="sprayerCapacity" value="15" step="1" style="width: 100%; padding: 0.5rem; border: 1px solid #ff9800; border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">litres</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Section 1 & 2 -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Walking Speed & Sprayer Output</div>
+                        <div class="calc-grid">
+                            <div class="calc-result">
+                                <div class="calc-label">1. Walking Speed</div>
+                                <div class="calc-value" id="walkingSpeed">0.00<span class="calc-unit">KPH</span></div>
+                            </div>
+                            <div class="calc-result">
+                                <div class="calc-label">2. Sprayer Output per Hectare</div>
+                                <div class="calc-value" id="sprayerOutput">0.00<span class="calc-unit">L/ha</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Result 3 -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Spray Tanks per Hectare</div>
+                        <div class="calc-result">
+                            <div class="calc-label">3. Number of Spray Tanks per Hectare</div>
+                            <div class="calc-value" id="tanksPerHa">0.00<span class="calc-unit">tanks</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Chemical Application -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Chemical Application</div>
+                        <div class="calc-grid">
+                            <div class="calc-input">
+                                <div class="calc-label">Chemical rate</div>
+                                <input type="number" id="chemicalRate" step="0.1" placeholder="0.0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">L/ha</div>
+                            </div>
+                            <div class="calc-result">
+                                <div class="calc-label">4. Chemical per Spray Tank</div>
+                                <div class="calc-value" id="chemicalPerTank">0.00<span class="calc-unit">mls</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Area Calculations -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Area to be Sprayed</div>
+                        <div class="calc-grid">
+                            <div class="calc-input">
+                                <div class="calc-label">Area to be sprayed</div>
+                                <input type="number" id="area" step="1" placeholder="0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">m²</div>
+                            </div>
+                            <div></div>
+                        </div>
+                    </div>
+
+                    <!-- Total Chemical & Water -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Total Requirements</div>
+                        <div class="calc-grid">
+                            <div class="calc-result">
+                                <div class="calc-label">5. Total Chemical Required</div>
+                                <div class="calc-value" id="totalChemical">0.000<span class="calc-unit">litres</span></div>
+                            </div>
+                            <div class="calc-result">
+                                <div class="calc-label">6. Total Water Required</div>
+                                <div class="calc-value" id="totalWater">0.00<span class="calc-unit">litres</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button class="btn btn-primary" onclick="saveCalculation()">💾 Save Calculation</button>
+                        <button class="btn btn-secondary" onclick="resetCalculator()">🔄 Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Saved Calculations Tab -->
+            <div id="savedTab" class="tab-content">
+                <div class="card">
+                    <h2 class="card-title">Saved Calculations</h2>
+                    <div id="savedCalcsList" class="loading">Loading saved calculations...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDiARsn-HBhwuHuWjmeAB9ntRxyd4FSR-E",
+            authDomain: "roundwood-manager.firebaseapp.com",
+            databaseURL: "https://roundwood-manager-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "roundwood-manager",
+            storageBucket: "roundwood-manager.firebasestorage.app",
+            messagingSenderId: "1064499324684",
+            appId: "1:1064499324684:web:c974e276f5b86092bbcb29",
+            measurementId: "G-FT8R6REHFK"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        let currentUser = null;
+
+        // Auth State Observer
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                document.getElementById('userEmail').textContent = user.email;
+                loadSavedCalculations();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'none';
+                currentUser = null;
+            }
+        });
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        // Logout
+        function logout() {
+            auth.signOut();
+        }
+
+        // Tab Navigation
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tabs button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            if (tabName === 'calculator') {
+                document.getElementById('calculatorTab').classList.add('active');
+            } else if (tabName === 'saved') {
+                document.getElementById('savedTab').classList.add('active');
+                loadSavedCalculations();
+            }
+        }
+
+        // Calculator Functions
+        function calculate() {
+            const seconds = parseFloat(document.getElementById('seconds').value) || 90;
+            const nozzleOutput = parseFloat(document.getElementById('nozzleOutput').value) || 0;
+            const stripWidth = parseFloat(document.getElementById('stripWidth').value) || 1;
+            const sprayerCapacity = parseFloat(document.getElementById('sprayerCapacity').value) || 15;
+            const chemicalRate = parseFloat(document.getElementById('chemicalRate').value) || 0;
+            const area = parseFloat(document.getElementById('area').value) || 0;
+
+            // 1. Walking speed = 360 / seconds
+            const walkingSpeed = 360 / seconds;
+            document.getElementById('walkingSpeed').innerHTML = walkingSpeed.toFixed(2) + '<span class="calc-unit">KPH</span>';
+
+            // 2. Sprayer output = (600 * nozzleOutput) / stripWidth / walkingSpeed
+            const sprayerOutput = (600 * nozzleOutput) / stripWidth / walkingSpeed;
+            document.getElementById('sprayerOutput').innerHTML = sprayerOutput.toFixed(2) + '<span class="calc-unit">L/ha</span>';
+
+            // 3. Tanks per hectare = sprayerOutput / sprayerCapacity
+            const tanksPerHa = sprayerOutput / sprayerCapacity;
+            document.getElementById('tanksPerHa').innerHTML = tanksPerHa.toFixed(2) + '<span class="calc-unit">tanks</span>';
+
+            // 4. Chemical per tank = (chemicalRate * 1000) / tanksPerHa
+            const chemicalPerTank = tanksPerHa > 0 ? (chemicalRate * 1000) / tanksPerHa : 0;
+            document.getElementById('chemicalPerTank').innerHTML = chemicalPerTank.toFixed(2) + '<span class="calc-unit">mls</span>';
+
+            // 5. Total chemical = (chemicalRate / 10000) * area
+            const totalChemical = (chemicalRate / 10000) * area;
+            document.getElementById('totalChemical').innerHTML = totalChemical.toFixed(3) + '<span class="calc-unit">litres</span>';
+
+            // 6. Total water = (sprayerOutput / 10000) * area - totalChemical
+            const totalWater = (sprayerOutput / 10000) * area - totalChemical;
+            document.getElementById('totalWater').innerHTML = totalWater.toFixed(2) + '<span class="calc-unit">litres</span>';
+        }
+
+        // Add event listeners to inputs for real-time calculation
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = ['seconds', 'nozzleOutput', 'stripWidth', 'sprayerCapacity', 'chemicalRate', 'area'];
+            inputs.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('input', calculate);
+                }
+            });
+        });
+
+        // Save Calculation to Firebase
+        async function saveCalculation() {
+            if (!currentUser) {
+                showAlert('Please sign in to save calculations', 'error');
+                return;
+            }
+
+            const calcName = document.getElementById('calcName').value || 'Unnamed Calculation';
+            const nozzleOutput = parseFloat(document.getElementById('nozzleOutput').value) || 0;
+            const chemicalRate = parseFloat(document.getElementById('chemicalRate').value) || 0;
+            const area = parseFloat(document.getElementById('area').value) || 0;
+
+            if (nozzleOutput === 0) {
+                showAlert('Please enter nozzle output', 'error');
+                return;
+            }
+
+            const calculation = {
+                name: calcName,
+                timestamp: Date.now(),
+                date: new Date().toLocaleDateString(),
+                inputs: {
+                    seconds: parseFloat(document.getElementById('seconds').value),
+                    nozzleOutput: nozzleOutput,
+                    stripWidth: parseFloat(document.getElementById('stripWidth').value),
+                    sprayerCapacity: parseFloat(document.getElementById('sprayerCapacity').value),
+                    chemicalRate: chemicalRate,
+                    area: area
+                },
+                results: {
+                    walkingSpeed: parseFloat(document.getElementById('walkingSpeed').textContent),
+                    sprayerOutput: parseFloat(document.getElementById('sprayerOutput').textContent),
+                    tanksPerHa: parseFloat(document.getElementById('tanksPerHa').textContent),
+                    chemicalPerTank: parseFloat(document.getElementById('chemicalPerTank').textContent),
+                    totalChemical: parseFloat(document.getElementById('totalChemical').textContent),
+                    totalWater: parseFloat(document.getElementById('totalWater').textContent)
+                }
+            };
+
+            try {
+                await database.ref(`calibrations/${currentUser.uid}`).push(calculation);
+                showAlert('Calculation saved successfully!', 'success');
+                document.getElementById('calcName').value = '';
+            } catch (error) {
+                showAlert('Error saving calculation: ' + error.message, 'error');
+            }
+        }
+
+        // Load Saved Calculations
+        function loadSavedCalculations() {
+            if (!currentUser) return;
+
+            const listDiv = document.getElementById('savedCalcsList');
+            listDiv.innerHTML = '<div class="loading">Loading...</div>';
+
+            database.ref(`calibrations/${currentUser.uid}`).orderByChild('timestamp').once('value', (snapshot) => {
+                const calcs = [];
+                snapshot.forEach((child) => {
+                    calcs.push({ id: child.key, ...child.val() });
+                });
+
+                calcs.reverse(); // Most recent first
+
+                if (calcs.length === 0) {
+                    listDiv.innerHTML = '<p style="text-align: center; color: var(--gray-500); padding: 2rem;">No saved calculations yet</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = calcs.map(calc => `
+                    <div class="saved-calc-item" onclick="loadCalculation('${calc.id}')">
+                        <div class="saved-calc-header">
+                            <div class="saved-calc-title">${calc.name}</div>
+                            <div class="saved-calc-date">${calc.date}</div>
+                        </div>
+                        <div class="saved-calc-details">
+                            <div>Nozzle: ${calc.inputs.nozzleOutput} LPM</div>
+                            <div>Chemical: ${calc.inputs.chemicalRate} L/ha</div>
+                            <div>Area: ${calc.inputs.area} m²</div>
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--primary); font-weight: 600;">
+                            Total Chemical: ${calc.results.totalChemical.toFixed(3)}L | Water: ${calc.results.totalWater.toFixed(2)}L
+                        </div>
+                        <button class="btn btn-danger" style="margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="event.stopPropagation(); deleteCalculation('${calc.id}')">Delete</button>
+                    </div>
+                `).join('');
+            });
+        }
+
+        // Load a specific calculation
+        function loadCalculation(calcId) {
+            database.ref(`calibrations/${currentUser.uid}/${calcId}`).once('value', (snapshot) => {
+                const calc = snapshot.val();
+                if (!calc) return;
+
+                // Load inputs
+                document.getElementById('calcName').value = calc.name;
+                document.getElementById('seconds').value = calc.inputs.seconds;
+                document.getElementById('nozzleOutput').value = calc.inputs.nozzleOutput;
+                document.getElementById('stripWidth').value = calc.inputs.stripWidth;
+                document.getElementById('sprayerCapacity').value = calc.inputs.sprayerCapacity;
+                document.getElementById('chemicalRate').value = calc.inputs.chemicalRate;
+                document.getElementById('area').value = calc.inputs.area;
+
+                // Recalculate
+                calculate();
+
+                // Switch to calculator tab
+                showTab('calculator');
+                document.querySelectorAll('.nav-tabs button')[0].classList.add('active');
+                document.querySelectorAll('.nav-tabs button')[1].classList.remove('active');
+
+                showAlert('Calculation loaded successfully!', 'success');
+            });
+        }
+
+        // Delete a calculation
+        async function deleteCalculation(calcId) {
+            if (!confirm('Are you sure you want to delete this calculation?')) return;
+
+            try {
+                await database.ref(`calibrations/${currentUser.uid}/${calcId}`).remove();
+                showAlert('Calculation deleted', 'success');
+                loadSavedCalculations();
+            } catch (error) {
+                showAlert('Error deleting calculation: ' + error.message, 'error');
+            }
+        }
+
+        // Reset Calculator
+        function resetCalculator() {
+            document.getElementById('calcName').value = '';
+            document.getElementById('seconds').value = 90;
+            document.getElementById('nozzleOutput').value = '';
+            document.getElementById('stripWidth').value = 1;
+            document.getElementById('sprayerCapacity').value = 15;
+            document.getElementById('chemicalRate').value = '';
+            document.getElementById('area').value = '';
+            calculate();
+        }
+
+        // Show Alert
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById('calcAlert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.style.display = 'block';
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
