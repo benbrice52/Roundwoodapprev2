@@ -1,0 +1,2577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roundwood Route Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2d5016;
+            --primary-light: #5a8a3a;
+            --primary-dark: #1a3009;
+            --accent: #8fbc5a;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        /* Loading Screen */
+        #loadingScreen {
+            position: fixed;
+            inset: 0;
+            background: var(--primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Login Screen */
+        #loginScreen {
+            display: none;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 2rem;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .login-card h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .login-card p {
+            color: var(--gray-600);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--gray-700);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(45, 80, 22, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-300);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* Main App */
+        #mainApp {
+            display: none;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-email {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .btn-logout {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .nav-tabs {
+            background: white;
+            border-bottom: 2px solid var(--gray-200);
+            padding: 0 1.5rem;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .nav-tabs button {
+            background: none;
+            border: none;
+            padding: 1rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--gray-600);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .nav-tabs button:hover {
+            color: var(--primary);
+            background: var(--gray-50);
+        }
+
+        .nav-tabs button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .nav-tabs button .badge {
+            background: var(--danger);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.125rem 0.5rem;
+            border-radius: 12px;
+            margin-left: 0.5rem;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            flex: 1;
+            padding: 2rem 1.5rem;
+        }
+
+        .tab-pane {
+            display: none;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .site-card {
+            border: 2px solid var(--gray-200);
+            padding: 1.25rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+
+        .site-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(45, 80, 22, 0.1);
+        }
+
+        .site-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+        }
+
+        .site-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .site-address {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+        }
+
+        .site-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .meta-label {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .meta-value {
+            font-size: 0.95rem;
+            color: var(--gray-900);
+            font-weight: 500;
+        }
+
+        .badge-frequency {
+            display: inline-block;
+            background: var(--primary-light);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .visit-card {
+            border-left: 4px solid var(--warning);
+            background: white;
+            padding: 1.25rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .visit-card.completed {
+            border-left-color: var(--success);
+            opacity: 0.7;
+        }
+
+        .visit-card.overdue {
+            border-left-color: var(--danger);
+            background: #fef2f2;
+        }
+
+        .visit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .visit-site {
+            font-weight: 600;
+            font-size: 1.125rem;
+            color: var(--gray-900);
+        }
+
+        .visit-date {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-top: 0.25rem;
+        }
+
+        .visit-status {
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-overdue {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .visit-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray-400);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-close:hover {
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--gray-500);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .empty-state-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+        }
+
+        .empty-state-text {
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 768px) {
+            .header-content h1 {
+                font-size: 1.125rem;
+            }
+
+            .user-email {
+                display: none;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .site-meta {
+                grid-template-columns: 1fr;
+            }
+
+            .visit-actions {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Calculator Specific Styles */
+        .calc-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+
+        .calc-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-light);
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .calc-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .calc-input {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 2px solid var(--gray-300);
+        }
+
+        .calc-input.preset {
+            background: #fff3e0;
+            border-color: #ff9800;
+        }
+
+        .calc-result {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 2px solid #2196f3;
+        }
+
+        .calc-label {
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .calc-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .calc-unit {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin-left: 0.5rem;
+        }
+
+        .saved-calc-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--gray-200);
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .saved-calc-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .saved-calc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .saved-calc-title {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .saved-calc-date {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+        }
+
+        .saved-calc-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <p style="margin-top: 1rem;">Loading Roundwood Manager...</p>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <div class="login-card">
+            <h1>🌳 Roundwood</h1>
+            <p>Route Manager</p>
+            
+            <div id="loginError" style="display: none;" class="alert alert-error"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary">Sign In</button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200);">
+                <p style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">
+                    Don't have an account?
+                </p>
+                <button id="showRegisterBtn" class="btn btn-secondary" style="width: 100%;">
+                    Create Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Create Account</h2>
+                <button class="btn-close" onclick="closeRegisterModal()">×</button>
+            </div>
+            
+            <div id="registerError" style="display: none;" class="alert alert-error"></div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" required placeholder="••••••••" minlength="6">
+                    <small style="color: var(--gray-500); font-size: 0.8rem;">Minimum 6 characters</small>
+                </div>
+                <div class="form-group">
+                    <label for="registerConfirm">Confirm Password</label>
+                    <input type="password" id="registerConfirm" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp">
+        <header class="header">
+            <div class="header-content">
+                <h1>🌳 Roundwood Route Manager</h1>
+                <div class="user-info">
+                    <span class="user-email" id="userEmail"></span>
+                    <button class="btn-logout" onclick="logout()">Sign Out</button>
+                </div>
+            </div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="active" onclick="showTab('dashboard')">📊 Dashboard</button>
+            <button onclick="showTab('sites')">📍 Sites</button>
+            <button onclick="showTab('visits')">📅 Upcoming Visits <span class="badge" id="upcomingCount">0</span></button>
+            <button onclick="showTab('invoices')">💰 Invoice Tracking <span class="badge" id="uninvoicedCount">0</span></button>
+            <button onclick="showTab('reviews')">⭐ Reviews</button>
+            <button onclick="showTab('history')">📜 History</button>
+            <button onclick="showTab('calculator')">📐 Calibration</button>
+        </nav>
+
+        <div class="tab-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-pane active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotalSites">0</div>
+                        <div class="stat-label">Active Sites</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: var(--warning);">
+                        <div class="stat-value" style="color: var(--warning);" id="statUpcomingVisits">0</div>
+                        <div class="stat-label">Upcoming Visits</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: var(--danger);">
+                        <div class="stat-value" style="color: var(--danger);" id="statUninvoiced">0</div>
+                        <div class="stat-label">Awaiting Invoice</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: var(--success);">
+                        <div class="stat-value" style="color: var(--success);" id="statCompletedToday">0</div>
+                        <div class="stat-label">Completed Today</div>
+                    </div>
+                </div>
+
+                <!-- Visit Reminders (3 days ahead) -->
+                <div id="visitRemindersCard" style="display: none; margin-bottom: 1.5rem;">
+                    <div class="card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;">
+                        <h3 style="color: #92400e; margin-bottom: 1rem; font-size: 1.125rem;">⏰ Upcoming Visit Reminders</h3>
+                        <p style="color: #78350f; margin-bottom: 1rem; font-size: 0.9rem;">These sites have visits coming up in the next 3 days - consider sending a courtesy reminder:</p>
+                        <div id="visitRemindersContent"></div>
+                    </div>
+                </div>
+
+                <!-- Seasonal Tips -->
+                <div class="card" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid var(--success); margin-bottom: 1.5rem;">
+                    <h3 style="color: #065f46; margin-bottom: 1rem; font-size: 1.125rem;">🌱 This Month's Focus</h3>
+                    <div id="seasonalTips" style="color: #064e3b;"></div>
+                </div>
+
+                <!-- Monthly Upsells -->
+                <div class="card" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 4px solid #3b82f6; margin-bottom: 1.5rem;">
+                    <h3 style="color: #1e40af; margin-bottom: 1rem; font-size: 1.125rem;">💼 Upsell Opportunities for Next Month</h3>
+                    <div id="monthlyUpsells" style="color: #1e3a8a;"></div>
+                </div>
+
+                <!-- Next Due Visits -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Next Due Visits</h2>
+                        <span style="color: var(--gray-500); font-size: 0.875rem;">Next 7 days</span>
+                    </div>
+                    <div id="nextVisits"></div>
+                </div>
+            </div>
+
+            <!-- Sites Tab -->
+            <div id="sites" class="tab-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">All Sites</h2>
+                        <button class="btn btn-primary" onclick="openAddSiteModal()">+ Add New Site</button>
+                    </div>
+                    <div id="sitesContainer"></div>
+                </div>
+            </div>
+
+            <!-- Visits Tab -->
+            <div id="visits" class="tab-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Upcoming Visits</h2>
+                    </div>
+                    <div id="visitsContainer"></div>
+                </div>
+            </div>
+
+            <!-- Invoices Tab -->
+            <div id="invoices" class="tab-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Invoice Tracking</h2>
+                    </div>
+                    <div id="invoicesContainer"></div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history" class="tab-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Completed Visits History</h2>
+                    </div>
+                    <div id="historyContainer"></div>
+                </div>
+            </div>
+
+            <!-- Reviews Tab -->
+            <div id="reviews" class="tab-pane">
+                <div class="card">
+                    <h2 class="card-title">⭐ Request Google Reviews</h2>
+                    <p style="color: var(--gray-600); margin-bottom: 1.5rem;">
+                        Send review requests to your customers. They'll get an email with a direct link to leave a Google review.
+                    </p>
+
+                    <form id="sendReviewForm" style="max-width: 600px;">
+                        <div class="form-group">
+                            <label for="reviewCustomerName">Customer Name *</label>
+                            <input type="text" id="reviewCustomerName" required placeholder="e.g. John Smith">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reviewCustomerEmail">Customer Email *</label>
+                            <input type="email" id="reviewCustomerEmail" required placeholder="customer@example.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reviewSiteName">Site Name *</label>
+                            <input type="text" id="reviewSiteName" required placeholder="e.g. Maidstone Office Park">
+                            <small style="color: var(--gray-500); font-size: 0.85rem;">This will appear in the email</small>
+                        </div>
+
+                        <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+                            <strong>📧 Email Preview:</strong><br>
+                            The customer will receive a professional email thanking them for choosing Roundwood Solutions and asking them to leave a Google review.
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            📧 Send Review Request
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card" style="margin-top: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem;">📊 Recent Review Requests</h3>
+                    <div id="reviewHistoryContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⭐</div>
+                            <div class="empty-state-text">No review requests sent yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculator Tab -->
+            <div id="calculator" class="tab-pane">
+                <div class="card">
+                    <h2 class="card-title">Sprayer Calibration Calculator</h2>
+                    
+                    <div id="calcAlert" style="display: none;"></div>
+
+                    <!-- Save Calculation Name -->
+                    <div class="form-group">
+                        <label for="calcName">Calculation Name (optional)</label>
+                        <input type="text" id="calcName" placeholder="e.g. Front Car Park - School Site">
+                    </div>
+
+                    <!-- Calibration Setup -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Calibration Setup</div>
+                        <div class="calc-grid">
+                            <div class="calc-input preset">
+                                <div class="calc-label">Seconds to spray 100m (preset)</div>
+                                <input type="number" id="seconds" value="90" step="1" style="width: 100%; padding: 0.5rem; border: 1px solid #ff9800; border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">seconds</div>
+                            </div>
+                            <div class="calc-input">
+                                <div class="calc-label">Nozzle output</div>
+                                <input type="number" id="nozzleOutput" step="0.1" placeholder="0.0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">LPM</div>
+                            </div>
+                            <div class="calc-input preset">
+                                <div class="calc-label">Strip width (preset)</div>
+                                <input type="number" id="stripWidth" value="1" step="0.1" style="width: 100%; padding: 0.5rem; border: 1px solid #ff9800; border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">meters</div>
+                            </div>
+                            <div class="calc-input preset">
+                                <div class="calc-label">Sprayer capacity (preset)</div>
+                                <input type="number" id="sprayerCapacity" value="15" step="1" style="width: 100%; padding: 0.5rem; border: 1px solid #ff9800; border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">litres</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Section 1 & 2 -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Walking Speed & Sprayer Output</div>
+                        <div class="calc-grid">
+                            <div class="calc-result">
+                                <div class="calc-label">1. Walking Speed</div>
+                                <div class="calc-value" id="walkingSpeed">0.00<span class="calc-unit">KPH</span></div>
+                            </div>
+                            <div class="calc-result">
+                                <div class="calc-label">2. Sprayer Output per Hectare</div>
+                                <div class="calc-value" id="sprayerOutput">0.00<span class="calc-unit">L/ha</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Result 3 -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Spray Tanks per Hectare</div>
+                        <div class="calc-result">
+                            <div class="calc-label">3. Number of Spray Tanks per Hectare</div>
+                            <div class="calc-value" id="tanksPerHa">0.00<span class="calc-unit">tanks</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Chemical Application -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Chemical Application</div>
+                        <div class="calc-grid">
+                            <div class="calc-input">
+                                <div class="calc-label">Chemical rate</div>
+                                <input type="number" id="chemicalRate" step="0.1" placeholder="0.0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">L/ha</div>
+                            </div>
+                            <div class="calc-result">
+                                <div class="calc-label">4. Chemical per Spray Tank</div>
+                                <div class="calc-value" id="chemicalPerTank">0.00<span class="calc-unit">mls</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Area Calculations -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Area to be Sprayed</div>
+                        <div class="calc-grid">
+                            <div class="calc-input">
+                                <div class="calc-label">Area to be sprayed</div>
+                                <input type="number" id="area" step="1" placeholder="0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 4px;">
+                                <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">m²</div>
+                            </div>
+                            <div></div>
+                        </div>
+                    </div>
+
+                    <!-- Total Chemical & Water -->
+                    <div class="calc-section">
+                        <div class="calc-section-title">Total Requirements</div>
+                        <div class="calc-grid">
+                            <div class="calc-result">
+                                <div class="calc-label">5. Total Chemical Required</div>
+                                <div class="calc-value" id="totalChemical">0.000<span class="calc-unit">litres</span></div>
+                            </div>
+                            <div class="calc-result">
+                                <div class="calc-label">6. Total Water Required</div>
+                                <div class="calc-value" id="totalWater">0.00<span class="calc-unit">litres</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button class="btn btn-primary" onclick="saveCalculation()">💾 Save Calculation</button>
+                        <button class="btn btn-secondary" onclick="resetCalculator()">🔄 Reset</button>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 1.5rem;">
+                    <h2 class="card-title">Saved Calculations</h2>
+                    <div id="savedCalcsList" class="loading">Loading saved calculations...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Site Modal -->
+    <div id="addSiteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add New Site</h2>
+                <button class="btn-close" onclick="closeAddSiteModal()">×</button>
+            </div>
+            
+            <form id="addSiteForm">
+                <div class="form-group">
+                    <label for="siteName">Site Name *</label>
+                    <input type="text" id="siteName" required placeholder="e.g., Maidstone Primary School">
+                </div>
+                
+                <div class="form-group">
+                    <label for="siteAddress">Address *</label>
+                    <input type="text" id="siteAddress" required placeholder="Full address">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="siteContact">Contact Name</label>
+                        <input type="text" id="siteContact" placeholder="Site manager">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="sitePhone">Phone</label>
+                        <input type="tel" id="sitePhone" placeholder="01234 567890">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="siteFrequency">Visit Frequency *</label>
+                        <select id="siteFrequency" required class="form-group input" style="width: 100%; padding: 0.75rem; border: 2px solid var(--gray-200); border-radius: 8px;">
+                            <option value="7">Weekly</option>
+                            <option value="14">Fortnightly</option>
+                            <option value="28">4-Weekly</option>
+                            <option value="30">Monthly</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="sitePrice">Price per Visit *</label>
+                        <input type="number" id="sitePrice" required placeholder="0.00" step="0.01" min="0">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="siteFirstVisit">First Visit Date *</label>
+                    <input type="date" id="siteFirstVisit" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="siteNotes">Notes</label>
+                    <textarea id="siteNotes" placeholder="Access codes, special instructions, etc."></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddSiteModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Add Site</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Complete Visit Modal -->
+    <div id="completeVisitModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Complete Visit</h2>
+                <button class="btn-close" onclick="closeCompleteVisitModal()">×</button>
+            </div>
+            
+            <form id="completeVisitForm">
+                <input type="hidden" id="completeVisitId">
+                
+                <div class="form-group">
+                    <label for="completedBy">Completed By *</label>
+                    <input type="text" id="completedBy" required placeholder="Staff member name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="completionNotes">Work Completed</label>
+                    <textarea id="completionNotes" placeholder="Describe the work done..."></textarea>
+                </div>
+                
+                <div class="alert alert-info">
+                    Completing this visit will automatically schedule the next visit and notify accounts to send an invoice.
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeCompleteVisitModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-success" style="flex: 1;">✓ Complete Visit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            onAuthStateChanged, 
+            signOut 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { 
+            getDatabase, 
+            ref, 
+            set, 
+            get, 
+            update, 
+            remove, 
+            onValue,
+            push,
+            query,
+            orderByChild,
+            equalTo
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDiARsn-HBhwuHuWjmeAB9ntRxyd4FSR-E",
+            authDomain: "roundwood-manager.firebaseapp.com",
+            databaseURL: "https://roundwood-manager-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "roundwood-manager",
+            storageBucket: "roundwood-manager.firebasestorage.app",
+            messagingSenderId: "1064499324684",
+            appId: "1:1064499324684:web:c974e276f5b86092bbcb29"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+
+        // Make functions globally available
+        window.auth = auth;
+        window.database = database;
+        window.dbRef = ref;
+        window.dbSet = set;
+        window.dbGet = get;
+        window.dbUpdate = update;
+        window.dbRemove = remove;
+        window.dbOnValue = onValue;
+        window.dbPush = push;
+        window.dbQuery = query;
+        window.dbOrderByChild = orderByChild;
+        window.dbEqualTo = equalTo;
+
+        // Auth State Listener
+        onAuthStateChanged(auth, (user) => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const loginScreen = document.getElementById('loginScreen');
+            const mainApp = document.getElementById('mainApp');
+
+            if (user) {
+                // User is logged in
+                document.getElementById('userEmail').textContent = user.email;
+                loadingScreen.style.display = 'none';
+                loginScreen.style.display = 'none';
+                mainApp.style.display = 'flex';
+                
+                // Initialize app data
+                window.currentUser = user;
+                loadAppData();
+                
+                // Render seasonal content immediately (doesn't need data from Firebase)
+                renderSeasonalTips();
+                renderMonthlyUpsells();
+            } else {
+                // User is logged out
+                loadingScreen.style.display = 'none';
+                loginScreen.style.display = 'flex';
+                mainApp.style.display = 'none';
+            }
+        });
+
+        // Login Handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        // Register Handlers
+        document.getElementById('showRegisterBtn').addEventListener('click', () => {
+            document.getElementById('registerModal').classList.add('active');
+        });
+
+        window.closeRegisterModal = () => {
+            document.getElementById('registerModal').classList.remove('active');
+            document.getElementById('registerForm').reset();
+            document.getElementById('registerError').style.display = 'none';
+        };
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirm = document.getElementById('registerConfirm').value;
+            const errorDiv = document.getElementById('registerError');
+
+            if (password !== confirm) {
+                errorDiv.textContent = 'Passwords do not match';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                closeRegisterModal();
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        // Logout
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        };
+
+        console.log('Firebase initialized successfully');
+    </script>
+
+    <script>
+        // Send Invoice Request Email using mailto
+        function sendInvoiceEmail(visit) {
+            const emailSubject = `Invoice Required: ${visit.siteName} - Completed ${visit.completedDate}`;
+            
+            const emailBody = `
+Visit Completion Details
+========================
+
+Site Information:
+- Site Name: ${visit.siteName}
+- Address: ${visit.siteAddress}
+
+Work Details:
+- Completed By: ${visit.completedBy}
+- Completed On: ${new Date(visit.completedDate).toLocaleDateString('en-GB')}
+- Amount: £${visit.price.toFixed(2)}
+
+Work Notes:
+${visit.completionNotes || 'No additional notes provided'}
+
+Please prepare and send invoice to the customer.
+
+---
+This notification was generated automatically by Roundwood Route Manager.
+            `.trim();
+
+            // Create mailto link
+            const mailto = `mailto:office@roundwoodsolutions.co.uk?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            // Open email client
+            window.location.href = mailto;
+        }
+
+        // App State
+        let sites = [];
+        let visits = [];
+
+        // Seasonal Tips and Upsells Data
+        const monthlyContent = {
+            1: { // January
+                tips: [
+                    "🌳 <strong>Prune fruit trees</strong> - Perfect time while trees are dormant. Remove dead, diseased, or crossing branches.",
+                    "❄️ <strong>Winter damage checks</strong> - Inspect sites for frost damage, broken branches, and waterlogging issues.",
+                    "🍂 <strong>Clear debris</strong> - Remove remaining autumn leaves and debris to prevent disease and drainage problems."
+                ],
+                upsells: [
+                    "🌲 <strong>Tree pruning service</strong> - Offer winter pruning for fruit trees and ornamentals while dormant.",
+                    "💧 <strong>Drainage solutions</strong> - Identify waterlogged areas and offer drainage improvement services."
+                ]
+            },
+            2: { // February
+                tips: [
+                    "🌱 <strong>Early weed control</strong> - Start treating perennial weeds before they establish. More effective now.",
+                    "🌳 <strong>Complete winter pruning</strong> - Last chance for major pruning before sap rises in March.",
+                    "🔍 <strong>Site audits</strong> - Perfect time to walk sites and plan spring work programmes with clients."
+                ],
+                upsells: [
+                    "📋 <strong>Spring work packages</strong> - Offer comprehensive spring prep packages to clients now.",
+                    "🌿 <strong>Mulching services</strong> - Propose mulching for beds before spring growth begins."
+                ]
+            },
+            3: { // March
+                tips: [
+                    "🌱 <strong>Spring growth begins</strong> - Increase visit frequency as grass starts growing actively.",
+                    "✂️ <strong>First cuts of season</strong> - Set mowers high for first cuts, don't scalp the grass.",
+                    "🌿 <strong>Feed applications</strong> - Apply spring fertilizer to boost growth and green-up lawns."
+                ],
+                upsells: [
+                    "💚 <strong>Spring fertilizer treatments</strong> - Offer professional feed applications for healthier lawns.",
+                    "🌷 <strong>Bed preparation</strong> - Propose summer bedding plant installation and bed refresh services."
+                ]
+            },
+            4: { // April
+                tips: [
+                    "🌱 <strong>Weekly cuts resume</strong> - Grass growing strongly now, ensure teams are keeping to schedules.",
+                    "🌸 <strong>Weed control peak time</strong> - Most effective month for treating broad-leaved weeds in grass.",
+                    "💦 <strong>Check irrigation</strong> - Test and commission irrigation systems before hot weather arrives."
+                ],
+                upsells: [
+                    "🌿 <strong>Selective weed treatments</strong> - Offer targeted weed control programs for lawns and beds.",
+                    "💧 <strong>Irrigation maintenance</strong> - Propose irrigation system checks and repairs before summer."
+                ]
+            },
+            5: { // May
+                tips: [
+                    "✂️ <strong>Peak cutting season</strong> - Busiest time of year, ensure equipment is maintained and teams are productive.",
+                    "🌺 <strong>Bedding plants</strong> - Install summer displays and hanging baskets for commercial sites.",
+                    "🐛 <strong>Pest monitoring</strong> - Watch for aphids, caterpillars, and other spring pests."
+                ],
+                upsells: [
+                    "🌻 <strong>Summer displays</strong> - Offer vibrant bedding plant installations and maintenance packages.",
+                    "🦟 <strong>Pest control services</strong> - Propose integrated pest management programs."
+                ]
+            },
+            6: { // June
+                tips: [
+                    "☀️ <strong>Drought watch</strong> - Monitor grass and plants closely, advise clients on irrigation needs.",
+                    "🌿 <strong>Hedge cutting begins</strong> - Start formal hedge trimming after bird nesting season (check first!).",
+                    "💐 <strong>Deadheading</strong> - Regular deadheading keeps displays looking fresh all summer."
+                ],
+                upsells: [
+                    "✂️ <strong>Hedge trimming services</strong> - Offer professional hedge cutting and shaping packages.",
+                    "💦 <strong>Drought management</strong> - Propose temporary irrigation or drought-tolerant planting solutions."
+                ]
+            },
+            7: { // July
+                tips: [
+                    "🌞 <strong>Heat stress management</strong> - Raise cutting heights, mow early morning or evening to reduce stress.",
+                    "💧 <strong>Irrigation critical</strong> - Ensure irrigation systems are working efficiently during peak demand.",
+                    "🌾 <strong>Holiday cover</strong> - Plan staff rotas carefully to maintain service during holiday season."
+                ],
+                upsells: [
+                    "🌿 <strong>Lawn renovation packages</strong> - Propose autumn renovation work for tired lawns now.",
+                    "💦 <strong>Water management services</strong> - Offer irrigation monitoring and water-saving solutions."
+                ]
+            },
+            8: { // August
+                tips: [
+                    "🍂 <strong>Plan autumn work</strong> - Start discussing and quoting autumn renovation projects with clients.",
+                    "🌱 <strong>Overseed preparation</strong> - Identify thin or damaged turf that will need autumn overseeding.",
+                    "☀️ <strong>Continue heat precautions</strong> - Keep cutting heights up, don't stress grass in dry spells."
+                ],
+                upsells: [
+                    "🌾 <strong>Autumn renovation services</strong> - Sell overseeding, scarification, and aeration packages now.",
+                    "🌳 <strong>Tree care</strong> - Propose tree health assessments and treatment programs."
+                ]
+            },
+            9: { // September
+                tips: [
+                    "🍂 <strong>Autumn renovation peak</strong> - Perfect conditions for scarifying, aerating, and overseeding.",
+                    "🌱 <strong>Autumn feeding</strong> - Apply autumn fertilizer with slow-release nitrogen for winter hardiness.",
+                    "💧 <strong>Reduce irrigation</strong> - Scale back watering as temperatures drop and rain increases."
+                ],
+                upsells: [
+                    "🍂 <strong>Gutter clearing</strong> - Offer autumn gutter and drain clearing services before leaf fall peaks.",
+                    "🌿 <strong>Lawn renovation</strong> - Final push on scarification and overseeding services this month."
+                ]
+            },
+            10: { // October
+                tips: [
+                    "🍂 <strong>Leaf clearance begins</strong> - Start regular leaf blowing and removal programs.",
+                    "✂️ <strong>Final cuts</strong> - Reduce cutting frequency as growth slows, set mowers higher.",
+                    "🌳 <strong>Tree inspection</strong> - Check trees for damage or disease before winter storms."
+                ],
+                upsells: [
+                    "🍁 <strong>Leaf clearance contracts</strong> - Offer weekly leaf clearing services for remainder of autumn.",
+                    "🌲 <strong>Winter plant protection</strong> - Propose wrapping and protection services for tender plants."
+                ]
+            },
+            11: { // November
+                tips: [
+                    "🍂 <strong>Leaf clearance priority</strong> - Peak leaf fall month, stay on top of clearing schedules.",
+                    "❄️ <strong>Winter prep</strong> - Clear gutters, check drains, prepare sites for winter weather.",
+                    "🌳 <strong>Tree works</strong> - Begin tree surgery and major pruning work in earnest."
+                ],
+                upsells: [
+                    "🎄 <strong>Christmas displays</strong> - Offer festive planting and decoration services for commercial sites.",
+                    "❄️ <strong>Winter gritting</strong> - Propose path and car park gritting contracts."
+                ]
+            },
+            12: { // December
+                tips: [
+                    "🎄 <strong>Festive displays</strong> - Install and maintain Christmas planters and decorations.",
+                    "❄️ <strong>Weather watch</strong> - Monitor forecasts, be ready for snow/ice response if contracted.",
+                    "📋 <strong>Year planning</strong> - Review year with clients, plan contracts and pricing for next season."
+                ],
+                upsells: [
+                    "📅 <strong>Next year's contracts</strong> - Secure contract renewals and increase annual frequencies now.",
+                    "🌲 <strong>Tree planting</strong> - Propose winter tree planting projects (dormant season planting)."
+                ]
+            }
+        };
+
+        // Render Seasonal Tips
+        function renderSeasonalTips() {
+            const month = new Date().getMonth() + 1; // 1-12
+            const content = monthlyContent[month];
+            const container = document.getElementById('seasonalTips');
+            
+            if (!container) {
+                console.error('seasonalTips container not found');
+                return;
+            }
+            
+            if (!content) {
+                console.error('No content for month:', month);
+                return;
+            }
+            
+            console.log('Rendering tips for month:', month, content.tips);
+            
+            container.innerHTML = content.tips.map(tip => 
+                `<div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid var(--success);">
+                    ${tip}
+                </div>`
+            ).join('');
+        }
+
+        // Render Monthly Upsells
+        function renderMonthlyUpsells() {
+            const currentMonth = new Date().getMonth() + 1; // 1-12
+            const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+            const content = monthlyContent[nextMonth];
+            const container = document.getElementById('monthlyUpsells');
+            
+            if (!container) {
+                console.error('monthlyUpsells container not found');
+                return;
+            }
+            
+            if (!content) {
+                console.error('No content for next month:', nextMonth);
+                return;
+            }
+            
+            console.log('Rendering upsells for next month:', nextMonth, content.upsells);
+            
+            const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            container.innerHTML = `
+                <p style="margin-bottom: 1rem; font-weight: 500;">For ${monthNames[nextMonth]}:</p>
+                ${content.upsells.map(upsell => 
+                    `<div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid #3b82f6;">
+                        ${upsell}
+                    </div>`
+                ).join('')}
+            `;
+        }
+
+        // Load App Data
+        async function loadAppData() {
+            const userId = window.currentUser.uid;
+            
+            // Listen to sites
+            const sitesRef = window.dbRef(window.database, `users/${userId}/sites`);
+            window.dbOnValue(sitesRef, (snapshot) => {
+                sites = [];
+                snapshot.forEach((childSnapshot) => {
+                    sites.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                renderSites();
+                updateStats();
+            });
+
+            // Listen to visits
+            const visitsRef = window.dbRef(window.database, `users/${userId}/visits`);
+            window.dbOnValue(visitsRef, (snapshot) => {
+                visits = [];
+                snapshot.forEach((childSnapshot) => {
+                    visits.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                renderVisits();
+                renderInvoices();
+                renderHistory();
+                updateStats();
+            });
+            
+            // Load review history and saved calculations
+            loadReviewHistory();
+            loadSavedCalculations();
+        }
+
+        // Tab Navigation
+        window.showTab = (tabName) => {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tabs button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Show tab content
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+        };
+
+        // Add Site Modal
+        window.openAddSiteModal = () => {
+            document.getElementById('addSiteModal').classList.add('active');
+            // Set default first visit to today
+            document.getElementById('siteFirstVisit').valueAsDate = new Date();
+        };
+
+        window.closeAddSiteModal = () => {
+            document.getElementById('addSiteModal').classList.remove('active');
+            document.getElementById('addSiteForm').reset();
+        };
+
+        // Add Site Handler
+        document.getElementById('addSiteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const siteData = {
+                name: document.getElementById('siteName').value,
+                address: document.getElementById('siteAddress').value,
+                contact: document.getElementById('siteContact').value,
+                phone: document.getElementById('sitePhone').value,
+                frequency: parseInt(document.getElementById('siteFrequency').value),
+                price: parseFloat(document.getElementById('sitePrice').value),
+                firstVisit: document.getElementById('siteFirstVisit').value,
+                notes: document.getElementById('siteNotes').value,
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                const userId = window.currentUser.uid;
+                const siteRef = window.dbPush(window.dbRef(window.database, `users/${userId}/sites`));
+                await window.dbSet(siteRef, siteData);
+
+                // Create first visit
+                const visitData = {
+                    siteId: siteRef.key,
+                    siteName: siteData.name,
+                    siteAddress: siteData.address,
+                    scheduledDate: siteData.firstVisit,
+                    price: siteData.price,
+                    frequency: siteData.frequency,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                };
+
+                const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                await window.dbSet(visitRef, visitData);
+
+                closeAddSiteModal();
+            } catch (error) {
+                console.error('Error adding site:', error);
+                alert('Error adding site. Please try again.');
+            }
+        });
+
+        // Render Sites
+        function renderSites() {
+            const container = document.getElementById('sitesContainer');
+            
+            if (sites.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📍</div>
+                        <div class="empty-state-title">No sites yet</div>
+                        <div class="empty-state-text">Add your first site to get started with route management</div>
+                        <button class="btn btn-primary" onclick="openAddSiteModal()">+ Add Your First Site</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = sites.map(site => {
+                const frequencyText = {
+                    7: 'Weekly',
+                    14: 'Fortnightly',
+                    28: '4-Weekly',
+                    30: 'Monthly',
+                    91: 'Quarterly'
+                }[site.frequency] || `Every ${site.frequency} days`;
+
+                return `
+                    <div class="site-card">
+                        <div class="site-header">
+                            <div>
+                                <div class="site-name">${site.name}</div>
+                                <div class="site-address">${site.address}</div>
+                                ${site.paused ? `
+                                    <div style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; margin-top: 0.25rem;">
+                                        ⏸️ Paused${site.pausedUntil ? ` until ${new Date(site.pausedUntil).toLocaleDateString('en-GB')}` : ' indefinitely'}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="badge-frequency">${frequencyText}</span>
+                                ${site.paused ? `
+                                    <button class="btn btn-success" onclick="resumeContract('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                        ▶️ Resume
+                                    </button>
+                                ` : `
+                                    <button class="btn btn-warning" onclick="pauseContract('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem; background: #f59e0b; color: white;">
+                                        ⏸️ Pause
+                                    </button>
+                                `}
+                                <button class="btn btn-secondary" onclick="editSite('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                    ✏️ Edit Site
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteSite('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </div>
+                        <div class="site-meta">
+                            ${site.contractNotes ? `
+                                <div class="meta-item" style="grid-column: 1 / -1; background: #fef3c7; padding: 0.75rem; border-radius: 6px; border-left: 3px solid #f59e0b;">
+                                    <div class="meta-label" style="color: #92400e; font-weight: 600;">📋 Contract Notes</div>
+                                    <div class="meta-value" style="color: #78350f; white-space: pre-wrap;">${site.contractNotes}</div>
+                                </div>
+                            ` : ''}
+                            ${site.contact ? `
+                                <div class="meta-item">
+                                    <div class="meta-label">Contact</div>
+                                    <div class="meta-value">${site.contact}</div>
+                                </div>
+                            ` : ''}
+                            ${site.phone ? `
+                                <div class="meta-item">
+                                    <div class="meta-label">Phone</div>
+                                    <div class="meta-value">${site.phone}</div>
+                                </div>
+                            ` : ''}
+                            <div class="meta-item">
+                                <div class="meta-label">Price</div>
+                                <div class="meta-value">£${site.price.toFixed(2)}</div>
+                            </div>
+                            ${site.notes ? `
+                                <div class="meta-item" style="grid-column: 1 / -1;">
+                                    <div class="meta-label">Access Notes</div>
+                                    <div class="meta-value">${site.notes}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render Visits
+        function renderVisits() {
+            const container = document.getElementById('visitsContainer');
+            const today = new Date().toISOString().split('T')[0];
+            
+            const upcomingVisits = visits
+                .filter(v => v.status === 'pending')
+                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
+            if (upcomingVisits.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📅</div>
+                        <div class="empty-state-title">No upcoming visits</div>
+                        <div class="empty-state-text">All visits are completed or there are no sites yet</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = upcomingVisits.map(visit => {
+                const isOverdue = visit.scheduledDate < today;
+                const visitDate = new Date(visit.scheduledDate);
+                const formattedDate = visitDate.toLocaleDateString('en-GB', { 
+                    weekday: 'short', 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                });
+
+                return `
+                    <div class="visit-card ${isOverdue ? 'overdue' : ''}">
+                        <div class="visit-header">
+                            <div>
+                                <div class="visit-site">${visit.siteName}</div>
+                                <div class="visit-date">${formattedDate}</div>
+                                <div class="site-address" style="margin-top: 0.5rem;">${visit.siteAddress}</div>
+                            </div>
+                            <span class="visit-status ${isOverdue ? 'status-overdue' : 'status-pending'}">
+                                ${isOverdue ? 'Overdue' : 'Pending'}
+                            </span>
+                        </div>
+                        <div class="meta-item" style="margin-top: 1rem;">
+                            <div class="meta-label">Visit Price</div>
+                            <div class="meta-value">£${visit.price.toFixed(2)}</div>
+                        </div>
+                        <div class="visit-actions">
+                            <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="flex: 1;">
+                                ✓ Complete Visit
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Complete Visit Modal
+        window.openCompleteVisitModal = (visitId) => {
+            document.getElementById('completeVisitId').value = visitId;
+            document.getElementById('completeVisitModal').classList.add('active');
+        };
+
+        window.closeCompleteVisitModal = () => {
+            document.getElementById('completeVisitModal').classList.remove('active');
+            document.getElementById('completeVisitForm').reset();
+        };
+
+        // Complete Visit Handler
+        document.getElementById('completeVisitForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const visitId = document.getElementById('completeVisitId').value;
+            const completedBy = document.getElementById('completedBy').value;
+            const notes = document.getElementById('completionNotes').value;
+
+            const visit = visits.find(v => v.id === visitId);
+            if (!visit) return;
+
+            try {
+                const userId = window.currentUser.uid;
+                
+                // Update current visit
+                const completedDate = new Date().toISOString().split('T')[0];
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
+                    status: 'completed',
+                    completedDate: completedDate,
+                    completedBy: completedBy,
+                    completionNotes: notes,
+                    invoiceStatus: 'pending'
+                });
+
+                // Create next visit
+                const nextVisitDate = new Date(visit.scheduledDate);
+                nextVisitDate.setDate(nextVisitDate.getDate() + visit.frequency);
+
+                const nextVisitData = {
+                    siteId: visit.siteId,
+                    siteName: visit.siteName,
+                    siteAddress: visit.siteAddress,
+                    scheduledDate: nextVisitDate.toISOString().split('T')[0],
+                    price: visit.price,
+                    frequency: visit.frequency,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                };
+
+                const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                await window.dbSet(nextVisitRef, nextVisitData);
+
+                closeCompleteVisitModal();
+
+                // Prepare email data and open email client
+                const visitForEmail = {
+                    ...visit,
+                    completedDate: completedDate,
+                    completedBy: completedBy,
+                    completionNotes: notes
+                };
+                
+                // Open email client with pre-filled details
+                sendInvoiceEmail(visitForEmail);
+                
+                alert('✅ Visit completed!\n📧 Email opening to office@roundwoodsolutions.co.uk\n📅 Next visit scheduled');
+            } catch (error) {
+                console.error('Error completing visit:', error);
+                alert('Error completing visit. Please try again.');
+            }
+        });
+
+        // Mark Invoice Sent
+        window.markInvoiceSent = async (visitId) => {
+            if (!confirm('Mark this invoice as sent? This will clear it from the tracking list.')) {
+                return;
+            }
+
+            try {
+                const userId = window.currentUser.uid;
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
+                    invoiceStatus: 'sent',
+                    invoiceSentDate: new Date().toISOString().split('T')[0]
+                });
+            } catch (error) {
+                console.error('Error updating invoice status:', error);
+                alert('Error updating invoice status. Please try again.');
+            }
+        };
+
+        // Render Invoices
+        function renderInvoices() {
+            const container = document.getElementById('invoicesContainer');
+            
+            const uninvoicedVisits = visits
+                .filter(v => v.status === 'completed' && v.invoiceStatus === 'pending')
+                .sort((a, b) => new Date(a.completedDate) - new Date(b.completedDate));
+
+            if (uninvoicedVisits.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">💰</div>
+                        <div class="empty-state-title">All caught up!</div>
+                        <div class="empty-state-text">No invoices awaiting to be sent</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = uninvoicedVisits.map(visit => {
+                const completedDate = new Date(visit.completedDate);
+                const formattedDate = completedDate.toLocaleDateString('en-GB', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                });
+
+                return `
+                    <div class="visit-card">
+                        <div class="visit-header">
+                            <div>
+                                <div class="visit-site">${visit.siteName}</div>
+                                <div class="visit-date">Completed: ${formattedDate}</div>
+                                <div class="site-address" style="margin-top: 0.5rem;">${visit.siteAddress}</div>
+                            </div>
+                            <span class="visit-status status-pending">Invoice Needed</span>
+                        </div>
+                        <div class="meta-item" style="margin-top: 1rem;">
+                            <div class="meta-label">Amount</div>
+                            <div class="meta-value">£${visit.price.toFixed(2)}</div>
+                        </div>
+                        ${visit.completedBy ? `
+                            <div class="meta-item" style="margin-top: 0.5rem;">
+                                <div class="meta-label">Completed By</div>
+                                <div class="meta-value">${visit.completedBy}</div>
+                            </div>
+                        ` : ''}
+                        ${visit.completionNotes ? `
+                            <div class="meta-item" style="margin-top: 0.5rem;">
+                                <div class="meta-label">Notes</div>
+                                <div class="meta-value">${visit.completionNotes}</div>
+                            </div>
+                        ` : ''}
+                        <div class="visit-actions">
+                            <button class="btn btn-success" onclick="markInvoiceSent('${visit.id}')" style="flex: 1;">
+                                ✓ Mark Invoice Sent
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render History
+        function renderHistory() {
+            const container = document.getElementById('historyContainer');
+            
+            const completedVisits = visits
+                .filter(v => v.status === 'completed')
+                .sort((a, b) => new Date(b.completedDate) - new Date(a.completedDate))
+                .slice(0, 20);
+
+            if (completedVisits.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📜</div>
+                        <div class="empty-state-title">No history yet</div>
+                        <div class="empty-state-text">Completed visits will appear here</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = completedVisits.map(visit => {
+                const completedDate = new Date(visit.completedDate);
+                const formattedDate = completedDate.toLocaleDateString('en-GB', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                });
+
+                const invoiceStatus = visit.invoiceStatus === 'sent' ? 'Invoiced' : 'Awaiting Invoice';
+                const invoiceClass = visit.invoiceStatus === 'sent' ? 'status-completed' : 'status-pending';
+
+                return `
+                    <div class="visit-card completed">
+                        <div class="visit-header">
+                            <div>
+                                <div class="visit-site">${visit.siteName}</div>
+                                <div class="visit-date">${formattedDate}</div>
+                            </div>
+                            <span class="visit-status ${invoiceClass}">${invoiceStatus}</span>
+                        </div>
+                        <div class="site-meta" style="margin-top: 1rem;">
+                            ${visit.completedBy ? `
+                                <div class="meta-item">
+                                    <div class="meta-label">Completed By</div>
+                                    <div class="meta-value">${visit.completedBy}</div>
+                                </div>
+                            ` : ''}
+                            <div class="meta-item">
+                                <div class="meta-label">Amount</div>
+                                <div class="meta-value">£${visit.price.toFixed(2)}</div>
+                            </div>
+                            ${visit.completionNotes ? `
+                                <div class="meta-item" style="grid-column: 1 / -1;">
+                                    <div class="meta-label">Notes</div>
+                                    <div class="meta-value">${visit.completionNotes}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+
+        // Render Visit Reminders (3 days ahead)
+        function renderVisitReminders() {
+            const today = new Date();
+            const threeDaysFromNow = new Date(today);
+            threeDaysFromNow.setDate(today.getDate() + 3);
+            const threeDaysStr = threeDaysFromNow.toISOString().split('T')[0];
+            
+            const upcomingVisits = visits
+                .filter(v => v.status === 'pending' && !v.hidden && v.scheduledDate === threeDaysStr)
+                .sort((a, b) => a.siteName.localeCompare(b.siteName));
+            
+            const card = document.getElementById('visitRemindersCard');
+            const container = document.getElementById('visitRemindersContent');
+            
+            if (upcomingVisits.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+            
+            card.style.display = 'block';
+            container.innerHTML = upcomingVisits.map(visit => `
+                <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #f59e0b;">
+                    <div>
+                        <div style="font-weight: 600; color: #92400e;">${visit.siteName}</div>
+                        <div style="font-size: 0.875rem; color: #78350f; margin-top: 0.25rem;">
+                            ${visit.siteAddress}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #a16207; margin-top: 0.25rem;">
+                            📅 ${new Date(visit.scheduledDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="sendCourtesyReminder('${visit.siteName}', '${visit.siteAddress}', '${visit.scheduledDate}')" style="font-size: 0.875rem; white-space: nowrap;">
+                        📧 Send Reminder
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Send Courtesy Reminder Email
+        window.sendCourtesyReminder = function(siteName, siteAddress, visitDate) {
+            const formattedDate = new Date(visitDate).toLocaleDateString('en-GB', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long',
+                year: 'numeric'
+            });
+            
+            const emailSubject = `Roundwood Solutions - Upcoming Visit on ${formattedDate}`;
+            
+            const emailBody = `
+Good morning,
+
+This is a courtesy reminder that we have a scheduled grounds maintenance visit to ${siteName} on:
+
+📅 ${formattedDate}
+
+Our team will be on-site to complete the scheduled maintenance work as per our agreement.
+
+If you have any specific requirements or concerns for this visit, please let us know.
+
+Many thanks,
+
+Ben Brice
+Director
+Roundwood Solutions Limited
+
+📞 07545 642021
+📧 office@roundwoodsolutions.co.uk
+🌐 www.roundwoodsolutions.co.uk
+            `.trim();
+
+            const mailto = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            window.location.href = mailto;
+            
+            alert('✅ Courtesy reminder email opened!\n\nAdd the client contact email and send.');
+        };
+
+        // Render Next Due Visits (Next 7 days + Overdue)
+        function renderNextVisits() {
+            const container = document.getElementById('nextVisits');
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const sevenDaysFromNow = new Date(today);
+            sevenDaysFromNow.setDate(today.getDate() + 7);
+            
+            // Get overdue visits
+            const overdueVisits = visits
+                .filter(v => {
+                    if (v.status !== 'pending' || v.hidden) return false;
+                    const visitDate = new Date(v.scheduledDate);
+                    return visitDate < today;
+                })
+                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+            
+            // Get next 7 days visits
+            const upcomingVisits = visits
+                .filter(v => {
+                    if (v.status !== 'pending' || v.hidden) return false;
+                    const visitDate = new Date(v.scheduledDate);
+                    return visitDate >= today && visitDate <= sevenDaysFromNow;
+                })
+                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
+            const allVisits = [...overdueVisits, ...upcomingVisits];
+
+            if (allVisits.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📅</div>
+                        <div class="empty-state-text">No overdue or upcoming visits in the next 7 days</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            // Render overdue section if there are overdue visits
+            if (overdueVisits.length > 0) {
+                html += `
+                    <div style="background: #fee2e2; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--danger); margin-bottom: 1.5rem;">
+                        <h3 style="color: #991b1b; margin-bottom: 0.5rem; font-size: 1.125rem;">⚠️ Overdue Visits (${overdueVisits.length})</h3>
+                        <p style="color: #7f1d1d; font-size: 0.9rem;">These visits are past their scheduled date and need immediate attention.</p>
+                    </div>
+                `;
+                
+                html += overdueVisits.map(visit => {
+                    const visitDate = new Date(visit.scheduledDate);
+                    const formattedDate = visitDate.toLocaleDateString('en-GB', { 
+                        weekday: 'short', 
+                        day: 'numeric', 
+                        month: 'short', 
+                        year: 'numeric' 
+                    });
+                    
+                    const daysOverdue = Math.floor((today - visitDate) / (1000 * 60 * 60 * 24));
+
+                    return `
+                        <div class="visit-card overdue">
+                            <div class="visit-header">
+                                <div>
+                                    <div class="visit-site">${visit.siteName}</div>
+                                    <div class="visit-date">${formattedDate} - ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue</div>
+                                    <div class="site-address" style="margin-top: 0.5rem;">${visit.siteAddress}</div>
+                                </div>
+                                <span class="visit-status status-overdue">
+                                    Overdue
+                                </span>
+                            </div>
+                            <div class="visit-actions">
+                                <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="flex: 1;">
+                                    ✓ Complete Visit
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            // Render upcoming visits section
+            if (upcomingVisits.length > 0) {
+                if (overdueVisits.length > 0) {
+                    html += `
+                        <div style="background: #dbeafe; padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 1.5rem 0;">
+                            <h3 style="color: #1e40af; margin-bottom: 0.5rem; font-size: 1.125rem;">📅 Upcoming Visits (Next 7 Days)</h3>
+                        </div>
+                    `;
+                }
+                
+                html += upcomingVisits.map(visit => {
+                    const visitDate = new Date(visit.scheduledDate);
+                    const isToday = visit.scheduledDate === todayStr;
+                    const formattedDate = visitDate.toLocaleDateString('en-GB', { 
+                        weekday: 'short', 
+                        day: 'numeric', 
+                        month: 'short', 
+                        year: 'numeric' 
+                    });
+
+                    return `
+                        <div class="visit-card ${isToday ? '' : ''}">
+                            <div class="visit-header">
+                                <div>
+                                    <div class="visit-site">${visit.siteName}</div>
+                                    <div class="visit-date">${formattedDate}</div>
+                                    <div class="site-address" style="margin-top: 0.5rem;">${visit.siteAddress}</div>
+                                </div>
+                                <span class="visit-status ${isToday ? 'status-pending' : 'status-pending'}" style="${isToday ? 'background: #fef3c7; color: #92400e;' : ''}">
+                                    ${isToday ? 'Today' : formattedDate.split(',')[0]}
+                                </span>
+                            </div>
+                            ${isToday ? `
+                                <div class="visit-actions">
+                                    <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="flex: 1;">
+                                        ✓ Complete Visit
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // Update Stats
+        function updateStats() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            document.getElementById('statTotalSites').textContent = sites.length;
+            
+            const upcomingVisits = visits.filter(v => v.status === 'pending').length;
+            document.getElementById('statUpcomingVisits').textContent = upcomingVisits;
+            document.getElementById('upcomingCount').textContent = upcomingVisits;
+            
+            const uninvoiced = visits.filter(v => v.status === 'completed' && v.invoiceStatus === 'pending').length;
+            document.getElementById('statUninvoiced').textContent = uninvoiced;
+            document.getElementById('uninvoicedCount').textContent = uninvoiced;
+            
+            const completedToday = visits.filter(v => v.completedDate === today).length;
+            document.getElementById('statCompletedToday').textContent = completedToday;
+            
+            // Update dashboard content
+            renderSeasonalTips();
+            renderMonthlyUpsells();
+            renderVisitReminders();
+            renderNextVisits();
+        }
+
+        // ============================================
+        // REVIEW REQUEST FUNCTIONS
+        // ============================================
+        
+        function sendReviewRequest(customerEmail, customerName, siteName) {
+            const emailSubject = 'How was our service at ' + siteName + '?';
+            
+            const emailBody = `
+Hi ${customerName},
+
+Thank you for choosing Roundwood Solutions for your grounds maintenance at ${siteName}.
+
+We'd really appreciate it if you could take 2 minutes to leave us a review on Google. Your feedback helps us improve and helps other businesses find quality grounds maintenance services.
+
+Leave a review here:
+https://share.google/UWIBan6wN0IrYBI0t
+
+Thank you for your time and trust in our services.
+
+Best regards,
+
+Ben Brice
+Director
+Roundwood Solutions Limited
+
+📞 07545 642021
+📧 office@roundwoodsolutions.co.uk
+🌐 www.roundwoodsolutions.co.uk
+
+🌳 Commercial Landscaping and Grounds Maintenance
+            `.trim();
+
+            const mailto = `mailto:${customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            return mailto;
+        }
+
+        // Send Review Request Form
+        document.getElementById('sendReviewForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const customerName = document.getElementById('reviewCustomerName').value;
+            const customerEmail = document.getElementById('reviewCustomerEmail').value;
+            const siteName = document.getElementById('reviewSiteName').value;
+            
+            const reviewLink = sendReviewRequest(customerEmail, customerName, siteName);
+            window.location.href = reviewLink;
+            
+            const userId = window.currentUser.uid;
+            const reviewData = {
+                customerName: customerName,
+                customerEmail: customerEmail,
+                siteName: siteName,
+                sentDate: new Date().toISOString(),
+                sentBy: window.currentUser.email
+            };
+            
+            const reviewRef = window.dbPush(window.dbRef(window.database, `users/\${userId}/reviewRequests`));
+            window.dbSet(reviewRef, reviewData).then(() => {
+                document.getElementById('sendReviewForm').reset();
+                alert('✅ Review request email opened!\n\nSend the email from your email client to complete.');
+                loadReviewHistory();
+            }).catch(error => {
+                console.error('Error saving review request:', error);
+            });
+        });
+
+        // Load Review History
+        function loadReviewHistory() {
+            if (!window.currentUser) return;
+            
+            const userId = window.currentUser.uid;
+            const reviewsRef = window.dbRef(window.database, `users/\${userId}/reviewRequests`);
+            
+            window.dbOnValue(reviewsRef, (snapshot) => {
+                const container = document.getElementById('reviewHistoryContainer');
+                const reviews = [];
+                
+                snapshot.forEach((childSnapshot) => {
+                    reviews.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                
+                if (reviews.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⭐</div>
+                            <div class="empty-state-text">No review requests sent yet</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                reviews.sort((a, b) => new Date(b.sentDate) - new Date(a.sentDate));
+                const recentReviews = reviews.slice(0, 10);
+                
+                container.innerHTML = recentReviews.map(review => `
+                    <div style="padding: 1rem; background: var(--gray-50); border-radius: 8px; margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <div style="font-weight: 600;">\${review.customerName}</div>
+                                <div style="font-size: 0.9rem; color: var(--gray-600);">\${review.customerEmail}</div>
+                                <div style="font-size: 0.85rem; color: var(--gray-500); margin-top: 0.25rem;">
+                                    Site: \${review.siteName}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.85rem; color: var(--gray-500);">
+                                    \${new Date(review.sentDate).toLocaleDateString('en-GB')}
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">
+                                    by \${review.sentBy}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            });
+        }
+
+        // ============================================
+        // CALCULATOR FUNCTIONS
+        // ============================================
+        
+        function calculate() {
+            const seconds = parseFloat(document.getElementById('seconds').value) || 90;
+            const nozzleOutput = parseFloat(document.getElementById('nozzleOutput').value) || 0;
+            const stripWidth = parseFloat(document.getElementById('stripWidth').value) || 1;
+            const sprayerCapacity = parseFloat(document.getElementById('sprayerCapacity').value) || 15;
+            const chemicalRate = parseFloat(document.getElementById('chemicalRate').value) || 0;
+            const area = parseFloat(document.getElementById('area').value) || 0;
+
+            const walkingSpeed = 360 / seconds;
+            document.getElementById('walkingSpeed').innerHTML = walkingSpeed.toFixed(2) + '<span class="calc-unit">KPH</span>';
+
+            const sprayerOutput = (600 * nozzleOutput) / stripWidth / walkingSpeed;
+            document.getElementById('sprayerOutput').innerHTML = sprayerOutput.toFixed(2) + '<span class="calc-unit">L/ha</span>';
+
+            const tanksPerHa = sprayerOutput / sprayerCapacity;
+            document.getElementById('tanksPerHa').innerHTML = tanksPerHa.toFixed(2) + '<span class="calc-unit">tanks</span>';
+
+            const chemicalPerTank = tanksPerHa > 0 ? (chemicalRate * 1000) / tanksPerHa : 0;
+            document.getElementById('chemicalPerTank').innerHTML = chemicalPerTank.toFixed(2) + '<span class="calc-unit">mls</span>';
+
+            const totalChemical = (chemicalRate / 10000) * area;
+            document.getElementById('totalChemical').innerHTML = totalChemical.toFixed(3) + '<span class="calc-unit">litres</span>';
+
+            const totalWater = (sprayerOutput / 10000) * area - totalChemical;
+            document.getElementById('totalWater').innerHTML = totalWater.toFixed(2) + '<span class="calc-unit">litres</span>';
+        }
+
+        setTimeout(() => {
+            const inputs = ['seconds', 'nozzleOutput', 'stripWidth', 'sprayerCapacity', 'chemicalRate', 'area'];
+            inputs.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('input', calculate);
+                }
+            });
+        }, 1000);
+
+        window.saveCalculation = async function() {
+            if (!window.currentUser) {
+                alert('Please sign in to save calculations');
+                return;
+            }
+
+            const calcName = document.getElementById('calcName').value || 'Unnamed Calculation';
+            const nozzleOutput = parseFloat(document.getElementById('nozzleOutput').value) || 0;
+
+            if (nozzleOutput === 0) {
+                alert('Please enter nozzle output');
+                return;
+            }
+
+            const calculation = {
+                name: calcName,
+                timestamp: Date.now(),
+                date: new Date().toLocaleDateString(),
+                inputs: {
+                    seconds: parseFloat(document.getElementById('seconds').value),
+                    nozzleOutput: nozzleOutput,
+                    stripWidth: parseFloat(document.getElementById('stripWidth').value),
+                    sprayerCapacity: parseFloat(document.getElementById('sprayerCapacity').value),
+                    chemicalRate: parseFloat(document.getElementById('chemicalRate').value),
+                    area: parseFloat(document.getElementById('area').value)
+                },
+                results: {
+                    walkingSpeed: parseFloat(document.getElementById('walkingSpeed').textContent),
+                    sprayerOutput: parseFloat(document.getElementById('sprayerOutput').textContent),
+                    tanksPerHa: parseFloat(document.getElementById('tanksPerHa').textContent),
+                    chemicalPerTank: parseFloat(document.getElementById('chemicalPerTank').textContent),
+                    totalChemical: parseFloat(document.getElementById('totalChemical').textContent),
+                    totalWater: parseFloat(document.getElementById('totalWater').textContent)
+                }
+            };
+
+            try {
+                await window.dbSet(window.dbPush(window.dbRef(window.database, `users/\${window.currentUser.uid}/calibrations`)), calculation);
+                alert('Calculation saved successfully!');
+                document.getElementById('calcName').value = '';
+                loadSavedCalculations();
+            } catch (error) {
+                alert('Error saving calculation: ' + error.message);
+            }
+        };
+
+        function loadSavedCalculations() {
+            if (!window.currentUser) return;
+
+            const listDiv = document.getElementById('savedCalcsList');
+            listDiv.innerHTML = '<div class="loading">Loading...</div>';
+
+            window.dbOnValue(window.dbRef(window.database, `users/\${window.currentUser.uid}/calibrations`), (snapshot) => {
+                const calcs = [];
+                snapshot.forEach((child) => {
+                    calcs.push({ id: child.key, ...child.val() });
+                });
+
+                calcs.reverse();
+
+                if (calcs.length === 0) {
+                    listDiv.innerHTML = '<p style="text-align: center; color: var(--gray-500); padding: 2rem;">No saved calculations yet</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = calcs.map(calc => `
+                    <div class="saved-calc-item" onclick="loadCalculation('\${calc.id}')">
+                        <div class="saved-calc-header">
+                            <div class="saved-calc-title">\${calc.name}</div>
+                            <div class="saved-calc-date">\${calc.date}</div>
+                        </div>
+                        <div class="saved-calc-details">
+                            <div>Nozzle: \${calc.inputs.nozzleOutput} LPM</div>
+                            <div>Chemical: \${calc.inputs.chemicalRate} L/ha</div>
+                            <div>Area: \${calc.inputs.area} m²</div>
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--primary); font-weight: 600;">
+                            Total Chemical: \${calc.results.totalChemical.toFixed(3)}L | Water: \${calc.results.totalWater.toFixed(2)}L
+                        </div>
+                        <button class="btn btn-danger" style="margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="event.stopPropagation(); deleteCalculation('\${calc.id}')">Delete</button>
+                    </div>
+                `).join('');
+            });
+        }
+
+        window.loadCalculation = function(calcId) {
+            window.dbGet(window.dbRef(window.database, `users/\${window.currentUser.uid}/calibrations/\${calcId}`)).then((snapshot) => {
+                const calc = snapshot.val();
+                if (!calc) return;
+
+                document.getElementById('calcName').value = calc.name;
+                document.getElementById('seconds').value = calc.inputs.seconds;
+                document.getElementById('nozzleOutput').value = calc.inputs.nozzleOutput;
+                document.getElementById('stripWidth').value = calc.inputs.stripWidth;
+                document.getElementById('sprayerCapacity').value = calc.inputs.sprayerCapacity;
+                document.getElementById('chemicalRate').value = calc.inputs.chemicalRate;
+                document.getElementById('area').value = calc.inputs.area;
+
+                calculate();
+                window.scrollTo(0, 0);
+                alert('Calculation loaded successfully!');
+            });
+        };
+
+        window.deleteCalculation = async function(calcId) {
+            if (!confirm('Are you sure you want to delete this calculation?')) return;
+
+            try {
+                await window.dbRemove(window.dbRef(window.database, `users/\${window.currentUser.uid}/calibrations/\${calcId}`));
+                alert('Calculation deleted');
+                loadSavedCalculations();
+            } catch (error) {
+                alert('Error deleting calculation: ' + error.message);
+            }
+        };
+
+        window.resetCalculator = function() {
+            document.getElementById('calcName').value = '';
+            document.getElementById('seconds').value = 90;
+            document.getElementById('nozzleOutput').value = '';
+            document.getElementById('stripWidth').value = 1;
+            document.getElementById('sprayerCapacity').value = 15;
+            document.getElementById('chemicalRate').value = '';
+            document.getElementById('area').value = '';
+            calculate();
+        };
+    </script>
+</body>
+</html>
