@@ -754,6 +754,79 @@
             font-size: 0.875rem;
             color: var(--gray-600);
         }
+
+        /* Collapsible Sections */
+        .collapsible-section {
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .collapsible-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .collapsible-header:hover {
+            opacity: 0.9;
+        }
+
+        .collapsible-header:active {
+            transform: scale(0.99);
+        }
+
+        .collapsible-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.125rem;
+        }
+
+        .collapsible-badge {
+            background: rgba(255, 255, 255, 0.3);
+            color: inherit;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .collapsible-arrow {
+            font-size: 1.25rem;
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible-section.open .collapsible-arrow {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: white;
+        }
+
+        .collapsible-section.open .collapsible-content {
+            max-height: 2000px;
+        }
+
+        .collapsible-inner {
+            padding: 1rem 1.25rem;
+        }
+
+        .section-description {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -838,66 +911,140 @@
         <nav class="nav-tabs">
             <button class="active" onclick="showTab('dashboard')">📊 Dashboard</button>
             <button onclick="showTab('sites')">📍 Sites</button>
+            <button onclick="showTab('projects')">📐 Projects <span class="badge" id="projectsCount">0</span></button>
             <button onclick="showTab('visits')">📅 Upcoming Visits <span class="badge" id="upcomingCount">0</span></button>
             <button onclick="showTab('invoices')">💰 Invoice Tracking <span class="badge" id="uninvoicedCount">0</span></button>
             <button onclick="showTab('reviews')">⭐ Reviews</button>
             <button onclick="showTab('history')">📜 History</button>
-            <button onclick="showTab('calculator')">📐 Calibration</button>
+            <button onclick="showTab('calculator')">🧪 Calibration</button>
         </nav>
 
         <div class="tab-content">
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-pane active">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="statTotalSites">0</div>
-                        <div class="stat-label">Active Sites</div>
+                <!-- Awaiting Invoice (Full Width) -->
+                <div class="collapsible-section" style="margin-bottom: 1rem;">
+                    <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b;">
+                        <div class="collapsible-title">
+                            <span>💰 Awaiting Invoice</span>
+                            <span class="collapsible-badge" id="statUninvoiced">0</span>
+                        </div>
+                        <span class="collapsible-arrow">▼</span>
                     </div>
-                    <div class="stat-card" style="border-left-color: var(--warning);">
-                        <div class="stat-value" style="color: var(--warning);" id="statUpcomingVisits">0</div>
-                        <div class="stat-label">Upcoming Visits</div>
-                    </div>
-                    <div class="stat-card" style="border-left-color: var(--danger);">
-                        <div class="stat-value" style="color: var(--danger);" id="statUninvoiced">0</div>
-                        <div class="stat-label">Awaiting Invoice</div>
-                    </div>
-                    <div class="stat-card" style="border-left-color: var(--success);">
-                        <div class="stat-value" style="color: var(--success);" id="statCompletedToday">0</div>
-                        <div class="stat-label">Completed Today</div>
+                    <div class="collapsible-content">
+                        <div class="collapsible-inner">
+                            <p class="section-description" style="color: #7f1d1d;">Click Invoice Tracking tab to view and manage uninvoiced work</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Visit Reminders (3 days ahead) -->
-                <div id="visitRemindersCard" style="display: none; margin-bottom: 1.5rem;">
-                    <div class="card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;">
-                        <h3 style="color: #92400e; margin-bottom: 1rem; font-size: 1.125rem;">⏰ Upcoming Visit Reminders</h3>
-                        <p style="color: #78350f; margin-bottom: 1rem; font-size: 0.9rem;">These sites have visits coming up in the next 3 days - consider sending a courtesy reminder:</p>
-                        <div id="visitRemindersContent"></div>
+                <!-- Due Today (Collapsible) -->
+                <div id="dueTodayCard" style="display: none;">
+                    <div class="collapsible-section open">
+                        <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e;">
+                            <div class="collapsible-title">
+                                <span>📅 Due Today</span>
+                                <span class="collapsible-badge" id="dueTodayBadge">0</span>
+                            </div>
+                            <span class="collapsible-arrow">▼</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="collapsible-inner">
+                                <p class="section-description" style="color: #78350f;">Visits and projects scheduled for today:</p>
+                                <div id="dueTodayContent"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Seasonal Tips -->
-                <div class="card" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid var(--success); margin-bottom: 1.5rem;">
-                    <h3 style="color: #065f46; margin-bottom: 1rem; font-size: 1.125rem;">🌱 This Month's Focus</h3>
-                    <div id="seasonalTips" style="color: #064e3b;"></div>
-                </div>
-
-                <!-- Monthly Upsells -->
-                <div class="card" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 4px solid #3b82f6; margin-bottom: 1.5rem;">
-                    <h3 style="color: #1e40af; margin-bottom: 1rem; font-size: 1.125rem;">💼 Upsell Opportunities for Next Month</h3>
-                    <div id="monthlyUpsells" style="color: #1e3a8a;"></div>
-                </div>
-
-                <!-- Next Due Visits -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Next Due Visits</h2>
-                        <span style="color: var(--gray-500); font-size: 0.875rem;">Next 7 days</span>
+                <!-- Visit Reminders (Collapsible) -->
+                <div id="visitRemindersCard" style="display: none;">
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e;">
+                            <div class="collapsible-title">
+                                <span>⏰ Upcoming Reminders</span>
+                                <span class="collapsible-badge" id="remindersBadge">0</span>
+                            </div>
+                            <span class="collapsible-arrow">▼</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="collapsible-inner">
+                                <p class="section-description" style="color: #78350f;">Sites with visits in 1-3 days - consider sending courtesy reminders:</p>
+                                <div id="visitRemindersContent"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div id="nextVisits"></div>
                 </div>
+
+                <!-- Active Projects (Collapsible) -->
+                <div id="activeProjectsCard" style="display: none;">
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); color: #5b21b6;">
+                            <div class="collapsible-title">
+                                <span>🚧 Active Projects</span>
+                                <span class="collapsible-badge" id="activeProjectsBadge">0</span>
+                            </div>
+                            <span class="collapsible-arrow">▼</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="collapsible-inner">
+                                <p class="section-description" style="color: #6b21a8;">Projects in progress or starting soon:</p>
+                                <div id="activeProjectsContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Next Due Visits (Collapsible) -->
+                <div class="collapsible-section open">
+                    <div class="collapsible-header" onclick="toggleSection(this)" style="background: var(--primary); color: white;">
+                        <div class="collapsible-title">
+                            <span>📅 Next 7 Days</span>
+                            <span class="collapsible-badge" id="nextSevenBadge">0</span>
+                        </div>
+                        <span class="collapsible-arrow">▼</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="collapsible-inner">
+                            <p class="section-description" style="color: var(--gray-600);">Upcoming visits and projects in the next week:</p>
+                            <div id="nextVisits"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seasonal Tips (Collapsible) -->
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46;">
+                        <div class="collapsible-title">
+                            <span>🌱 This Month's Focus</span>
+                        </div>
+                        <span class="collapsible-arrow">▼</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="collapsible-inner">
+                            <div id="seasonalTips" style="color: #064e3b;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Upsells (Collapsible) -->
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af;">
+                        <div class="collapsible-title">
+                            <span>💼 Upsell Opportunities</span>
+                        </div>
+                        <span class="collapsible-arrow">▼</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="collapsible-inner">
+                            <div id="monthlyUpsells" style="color: #1e3a8a;"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
+            <!-- Sites Tab -->
             <!-- Sites Tab -->
             <div id="sites" class="tab-pane">
                 <div class="card">
@@ -906,6 +1053,17 @@
                         <button class="btn btn-primary" onclick="openAddSiteModal()">+ Add New Site</button>
                     </div>
                     <div id="sitesContainer"></div>
+                </div>
+            </div>
+
+            <!-- Projects Tab -->
+            <div id="projects" class="tab-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">All Projects</h2>
+                        <button class="btn btn-primary" onclick="openAddProjectModal()">+ Add New Project</button>
+                    </div>
+                    <div id="projectsContainer"></div>
                 </div>
             </div>
 
@@ -949,6 +1107,15 @@
 
                     <form id="sendReviewForm" style="max-width: 600px;">
                         <div class="form-group">
+                            <label for="reviewBusiness">Business *</label>
+                            <select id="reviewBusiness" required style="font-size: 1rem; padding: 0.75rem;">
+                                <option value="roundwood">🌳 Roundwood Solutions - Grounds Maintenance</option>
+                                <option value="weedcontrol">🌿 Weed Control Kent - Weed Control</option>
+                            </select>
+                            <small style="color: var(--gray-500); font-size: 0.85rem;">Choose which business this review is for</small>
+                        </div>
+
+                        <div class="form-group">
                             <label for="reviewCustomerName">Customer Name *</label>
                             <input type="text" id="reviewCustomerName" required placeholder="e.g. John Smith">
                         </div>
@@ -959,14 +1126,14 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="reviewSiteName">Site Name *</label>
-                            <input type="text" id="reviewSiteName" required placeholder="e.g. Maidstone Office Park">
+                            <label for="reviewSiteName">Site/Property Name *</label>
+                            <input type="text" id="reviewSiteName" required placeholder="e.g. Maidstone Office Park or 123 High Street">
                             <small style="color: var(--gray-500); font-size: 0.85rem;">This will appear in the email</small>
                         </div>
 
                         <div class="alert alert-info" style="margin-bottom: 1.5rem;">
                             <strong>📧 Email Preview:</strong><br>
-                            The customer will receive a professional email thanking them for choosing Roundwood Solutions and asking them to leave a Google review.
+                            <span id="emailPreviewText">The customer will receive a professional email thanking them for choosing Roundwood Solutions and asking them to leave a Google review.</span>
                         </div>
 
                         <button type="submit" class="btn btn-primary" style="width: 100%;">
@@ -1176,32 +1343,286 @@
 
     <!-- Complete Visit Modal -->
     <div id="completeVisitModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
-                <h2 class="modal-title">Complete Visit</h2>
+                <h2 class="modal-title">Complete Visit Worksheet</h2>
                 <button class="btn-close" onclick="closeCompleteVisitModal()">×</button>
             </div>
             
             <form id="completeVisitForm">
                 <input type="hidden" id="completeVisitId">
                 
+                <div class="alert alert-warning" style="margin-bottom: 1.5rem;">
+                    <strong>📸 Remember:</strong> Take before/after photos with your phone camera before completing
+                </div>
+                
                 <div class="form-group">
-                    <label for="completedBy">Completed By *</label>
+                    <label for="completedBy">Roundwood Operative *</label>
                     <input type="text" id="completedBy" required placeholder="Staff member name">
                 </div>
-                
-                <div class="form-group">
-                    <label for="completionNotes">Work Completed</label>
-                    <textarea id="completionNotes" placeholder="Describe the work done..."></textarea>
+
+                <div style="background: var(--primary); color: white; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem;">Work Completed - Tick what applies</h3>
                 </div>
-                
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; padding: 1rem; background: white; border: 2px solid var(--gray-300); border-radius: 8px; cursor: pointer; margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="weedRemoval" style="width: 20px; height: 20px; margin-right: 1rem;">
+                        <div>
+                            <strong>Weed removal</strong> to appropriate areas - entrance/exits etc
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; padding: 1rem; background: white; border: 2px solid var(--gray-300); border-radius: 8px; cursor: pointer; margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="strimming" style="width: 20px; height: 20px; margin-right: 1rem;">
+                        <div>
+                            <strong>Strimming</strong> as required to whole site
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; padding: 1rem; background: white; border: 2px solid var(--gray-300); border-radius: 8px; cursor: pointer; margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="weedSuppressant" style="width: 20px; height: 20px; margin-right: 1rem;">
+                        <div>
+                            <strong>Weed suppressant</strong> applied as per map provided (Glyphosate based)
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; padding: 1rem; background: white; border: 2px solid var(--gray-300); border-radius: 8px; cursor: pointer; margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="generalTidy" style="width: 20px; height: 20px; margin-right: 1rem;">
+                        <div>
+                            <strong>General tidy</strong> and rubbish removal
+                        </div>
+                    </label>
+
+                    <small style="color: var(--gray-500); display: block; margin-top: 0.5rem;">
+                        Tick only the tasks that were completed for this visit
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="siteNotes">Site Notes / Additional Work</label>
+                    <textarea id="siteNotes" placeholder="Any additional notes about this visit..." rows="3"></textarea>
+                    <small style="color: var(--gray-500); font-size: 0.85rem; display: block; margin-top: 0.25rem;">
+                        Note: Weed suppressant can take around 4-6 weeks to take effect
+                    </small>
+                </div>
+
+                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0;">
+                    <h3 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.125rem;">Customer Sign-Off *</h3>
+                    
+                    <div class="form-group">
+                        <label for="customerName">Customer Name *</label>
+                        <input type="text" id="customerName" required placeholder="e.g. John Smith">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Customer Signature *</label>
+                        <canvas id="signaturePad" class="signature-pad" width="540" height="200" style="touch-action: none;"></canvas>
+                        <div class="signature-controls">
+                            <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
+                        </div>
+                        <small style="color: var(--gray-500); font-size: 0.85rem;">Customer must sign above to confirm work completed</small>
+                    </div>
+                </div>
+
                 <div class="alert alert-info">
-                    Completing this visit will automatically schedule the next visit and notify accounts to send an invoice.
+                    Completing this visit will:
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Save worksheet with customer signature</li>
+                        <li>Automatically schedule the next visit</li>
+                        <li>Send email notification to finance team</li>
+                    </ul>
+                    <p style="margin-top: 0.75rem; margin-bottom: 0;">
+                        💡 <strong>Tip:</strong> Use the ⭐ <strong>Reviews</strong> tab to send review requests later
+                    </p>
                 </div>
                 
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-secondary" onclick="closeCompleteVisitModal()" style="flex: 1;">Cancel</button>
-                    <button type="submit" class="btn btn-success" style="flex: 1;">✓ Complete Visit</button>
+                    <button type="submit" class="btn btn-success" style="flex: 1;">✓ Complete & Generate Worksheet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Project Modal -->
+    <div id="addProjectModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Add New Project</h2>
+                <button class="btn-close" onclick="closeAddProjectModal()">×</button>
+            </div>
+            
+            <form id="addProjectForm">
+                <div class="form-group">
+                    <label for="projectName">Project Name *</label>
+                    <input type="text" id="projectName" required placeholder="e.g. Car Park Resurfacing">
+                </div>
+
+                <div class="form-group">
+                    <label for="projectType">Project Type *</label>
+                    <select id="projectType" required>
+                        <option value="">-- Select Type --</option>
+                        <option value="Landscaping">Landscaping</option>
+                        <option value="Paving">Paving</option>
+                        <option value="Fencing">Fencing</option>
+                        <option value="Tree Work">Tree Work</option>
+                        <option value="Groundworks">Groundworks</option>
+                        <option value="Artificial Grass">Artificial Grass</option>
+                        <option value="Decking">Decking</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="projectClientName">Client Name *</label>
+                    <input type="text" id="projectClientName" required placeholder="e.g. John Smith or Station Road Site">
+                </div>
+                
+                <div class="form-group">
+                    <label for="projectAddress">Site Address *</label>
+                    <input type="text" id="projectAddress" required placeholder="Full address">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="projectContact">Contact Name</label>
+                        <input type="text" id="projectContact" placeholder="Site contact">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="projectPhone">Phone</label>
+                        <input type="tel" id="projectPhone" placeholder="01234 567890">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="projectEmail">Email</label>
+                    <input type="email" id="projectEmail" placeholder="client@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="projectPrice">Project Price *</label>
+                    <input type="number" id="projectPrice" required placeholder="0.00" step="0.01" min="0">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="projectStartDate">Start Date *</label>
+                        <input type="date" id="projectStartDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="projectExpectedEnd">Expected Completion *</label>
+                        <input type="date" id="projectExpectedEnd" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="projectDescription">Project Description / Scope *</label>
+                    <textarea id="projectDescription" required placeholder="Describe the work to be completed..." rows="4"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="projectNotes">Additional Notes</label>
+                    <textarea id="projectNotes" placeholder="Any special requirements, access notes, etc..." rows="2"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddProjectModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Add Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Complete Project Modal -->
+    <div id="completeProjectModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Complete Project</h2>
+                <button class="btn-close" onclick="closeCompleteProjectModal()">×</button>
+            </div>
+            
+            <form id="completeProjectForm">
+                <input type="hidden" id="completeProjectId">
+                
+                <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+                    <strong>📸 Remember:</strong> Take before/after photos with your phone before completing
+                </div>
+
+                <div class="form-group">
+                    <label for="projectCompletedBy">Completed By *</label>
+                    <input type="text" id="projectCompletedBy" required placeholder="Staff member name">
+                </div>
+
+                <div class="form-group">
+                    <label for="projectActualEndDate">Actual Completion Date *</label>
+                    <input type="date" id="projectActualEndDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="projectCompletionNotes">Completion Notes</label>
+                    <textarea id="projectCompletionNotes" placeholder="Any notes about the completed project..." rows="3"></textarea>
+                </div>
+
+                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.125rem;">Customer Sign-Off *</h3>
+                    
+                    <div class="form-group">
+                        <label for="projectCustomerName">Customer Name *</label>
+                        <input type="text" id="projectCustomerName" required placeholder="e.g. John Smith">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Customer Signature *</label>
+                        <canvas id="projectSignaturePad" class="signature-pad" width="540" height="200" style="touch-action: none;"></canvas>
+                        <div class="signature-controls">
+                            <button type="button" class="btn btn-secondary" onclick="clearProjectSignature()">Clear Signature</button>
+                        </div>
+                        <small style="color: var(--gray-500); font-size: 0.85rem;">Customer must sign above to confirm work completed</small>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    Completing this project will:
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Save completion details with customer signature</li>
+                        <li>Add to invoice tracking for billing</li>
+                        <li>Send email notification to finance team</li>
+                    </ul>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeCompleteProjectModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-success" style="flex: 1;">✓ Complete Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Project Update Modal -->
+    <div id="addUpdateModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Project Update</h2>
+                <button class="btn-close" onclick="closeAddUpdateModal()">×</button>
+            </div>
+            
+            <form id="addUpdateForm">
+                <input type="hidden" id="updateProjectId">
+                
+                <div class="form-group">
+                    <label for="updateText">Update / Note *</label>
+                    <textarea id="updateText" required placeholder="e.g. Awaiting materials - ETA 2 weeks&#10;Revisit in 6 weeks for painting&#10;Client requested color change" rows="4" style="resize: vertical;"></textarea>
+                    <small style="color: var(--gray-500); font-size: 0.85rem; display: block; margin-top: 0.25rem;">
+                        Track progress, delays, client requests, or any important notes
+                    </small>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddUpdateModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Add Update</button>
                 </div>
             </form>
         </div>
@@ -1354,9 +1775,18 @@
         function sendInvoiceEmail(visit) {
             const emailSubject = `Invoice Required: ${visit.siteName} - Completed ${visit.completedDate}`;
             
+            // Format work completed checklist
+            const workList = [];
+            if (visit.workCompleted) {
+                if (visit.workCompleted.weedRemoval) workList.push('✓ Weed removal to appropriate areas');
+                if (visit.workCompleted.strimming) workList.push('✓ Strimming as required to whole site');
+                if (visit.workCompleted.weedSuppressant) workList.push('✓ Weed suppressant applied (Glyphosate based)');
+                if (visit.workCompleted.generalTidy) workList.push('✓ General tidy and rubbish removal');
+            }
+            
             const emailBody = `
-Visit Completion Details
-========================
+Visit Completion Worksheet
+====================================
 
 Site Information:
 - Site Name: ${visit.siteName}
@@ -1365,10 +1795,20 @@ Site Information:
 Work Details:
 - Completed By: ${visit.completedBy}
 - Completed On: ${new Date(visit.completedDate).toLocaleDateString('en-GB')}
-- Amount: £${visit.price.toFixed(2)}
+- Invoice Amount: £${visit.price.toFixed(2)}
 
-Work Notes:
-${visit.completionNotes || 'No additional notes provided'}
+Work Completed:
+${workList.length > 0 ? workList.join('\n') : 'No tasks recorded'}
+
+${visit.siteNotes ? `Site Notes / Additional Work:\n${visit.siteNotes}\n` : ''}
+Customer Sign-Off:
+- Customer Name: ${visit.customerName}
+- Signature: Captured digitally (view in app History tab)
+
+REMINDER: 
+- Field staff should have before/after photos on their phone
+- Customer signature captured digitally
+- Work completion confirmed
 
 Please prepare and send invoice to the customer.
 
@@ -1383,9 +1823,17 @@ This notification was generated automatically by Roundwood Route Manager.
             window.location.href = mailto;
         }
 
+        // Toggle Collapsible Sections
+        window.toggleSection = function(header) {
+            const section = header.closest('.collapsible-section');
+            section.classList.toggle('open');
+        };
+
         // App State
         let sites = [];
         let visits = [];
+        let projects = [];
+        let projectSignaturePad = null;
 
         // Seasonal Tips and Upsells Data
         const monthlyContent = {
@@ -1407,8 +1855,8 @@ This notification was generated automatically by Roundwood Route Manager.
                     "🔍 <strong>Site audits</strong> - Perfect time to walk sites and plan spring work programmes with clients."
                 ],
                 upsells: [
-                    "📋 <strong>Spring preparation bundles</strong> - Package together scarifying, feeding, and overseeding into discounted spring packages. Book now for March/April work.",
-                    "🌿 <strong>Mulching services</strong> - Propose mulching for beds before spring growth begins."
+                    "❄️ <strong>Winter tree pruning</strong> - February is the last month for dormant season pruning. Quote for fruit trees, roses, and deciduous shrubs before sap rises.",
+                    "🌿 <strong>Early weed treatment</strong> - Treat perennial weeds NOW while they're small and weak. February treatments are more effective than waiting until spring."
                 ]
             },
             3: { // March
@@ -1582,6 +2030,7 @@ This notification was generated automatically by Roundwood Route Manager.
         // Load App Data
         async function loadAppData() {
             const userId = window.currentUser.uid;
+            console.log('Loading data for user:', userId);
             
             // Listen to sites
             const sitesRef = window.dbRef(window.database, `users/${userId}/sites`);
@@ -1593,6 +2042,7 @@ This notification was generated automatically by Roundwood Route Manager.
                         ...childSnapshot.val()
                     });
                 });
+                console.log('Loaded sites:', sites.length);
                 renderSites();
                 updateStats();
             });
@@ -1607,9 +2057,25 @@ This notification was generated automatically by Roundwood Route Manager.
                         ...childSnapshot.val()
                     });
                 });
+                console.log('Loaded visits:', visits.length);
                 renderVisits();
                 renderInvoices();
                 renderHistory();
+                updateStats();
+            });
+
+            // Listen to projects
+            const projectsRef = window.dbRef(window.database, `users/${userId}/projects`);
+            window.dbOnValue(projectsRef, (snapshot) => {
+                projects = [];
+                snapshot.forEach((childSnapshot) => {
+                    projects.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                console.log('Loaded projects:', projects.length);
+                renderProjects();
                 updateStats();
             });
             
@@ -1692,6 +2158,13 @@ This notification was generated automatically by Roundwood Route Manager.
         function renderSites() {
             const container = document.getElementById('sitesContainer');
             
+            if (!container) {
+                console.error('sitesContainer element not found');
+                return;
+            }
+            
+            console.log('renderSites called with', sites.length, 'sites');
+            
             if (sites.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -1704,8 +2177,9 @@ This notification was generated automatically by Roundwood Route Manager.
                 return;
             }
 
-            container.innerHTML = sites.map(site => {
-                const frequencyText = {
+            try {
+                const html = sites.map(site => {
+                    const frequencyText = {
                     7: 'Weekly',
                     14: 'Fortnightly',
                     28: '4-Weekly',
@@ -1777,7 +2251,887 @@ This notification was generated automatically by Roundwood Route Manager.
                     </div>
                 `;
             }).join('');
+            
+            console.log('Generated HTML length:', html.length);
+            container.innerHTML = html;
+            console.log('Container innerHTML set successfully');
+            
+            } catch (error) {
+                console.error('Error rendering sites:', error);                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error displaying sites. Please refresh the page. Error: ${error.message}
+                    </div>
+                `;
+            }
         }
+
+        // ============================================
+        // SITE MANAGEMENT FUNCTIONS
+        // ============================================
+
+        // Pause Contract
+        window.pauseContract = async (siteId) => {
+            const site = sites.find(s => s.id === siteId);
+            if (!site) return;
+
+            const pauseIndefinitely = confirm(`Pause "${site.name}"?\n\nClick OK to pause indefinitely, or Cancel to choose an end date.`);
+            
+            let pausedUntil = null;
+            if (!pauseIndefinitely) {
+                const dateStr = prompt('Pause until (YYYY-MM-DD):');
+                if (!dateStr) return;
+                pausedUntil = dateStr;
+            }
+
+            try {
+                const userId = window.currentUser.uid;
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), {
+                    paused: true,
+                    pausedUntil: pausedUntil,
+                    pausedDate: new Date().toISOString().split('T')[0]
+                });
+
+                // Hide all pending visits for this site
+                const siteVisits = visits.filter(v => v.siteId === siteId && v.status === 'pending');
+                for (const visit of siteVisits) {
+                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                        hidden: true
+                    });
+                }
+
+                alert(`✅ Contract paused${pausedUntil ? ` until ${new Date(pausedUntil).toLocaleDateString('en-GB')}` : ' indefinitely'}`);
+            } catch (error) {
+                console.error('Error pausing contract:', error);
+                alert('Error pausing contract. Please try again.');
+            }
+        };
+
+        // Resume Contract
+        window.resumeContract = async (siteId) => {
+            const site = sites.find(s => s.id === siteId);
+            if (!site) return;
+
+            if (!confirm(`Resume "${site.name}"?\n\nThis will create a new visit starting from today.`)) {
+                return;
+            }
+
+            try {
+                const userId = window.currentUser.uid;
+                
+                // Resume the site
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), {
+                    paused: false,
+                    pausedUntil: null,
+                    resumedDate: new Date().toISOString().split('T')[0]
+                });
+
+                // Unhide visits and create new visit from today
+                const siteVisits = visits.filter(v => v.siteId === siteId && v.hidden);
+                for (const visit of siteVisits) {
+                    await window.dbRemove(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`));
+                }
+
+                // Create new visit starting today
+                const nextVisitData = {
+                    siteId: site.id,
+                    siteName: site.name,
+                    siteAddress: site.address,
+                    scheduledDate: new Date().toISOString().split('T')[0],
+                    price: site.price,
+                    frequency: site.frequency,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                };
+
+                const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                await window.dbSet(nextVisitRef, nextVisitData);
+
+                alert('✅ Contract resumed! New visit scheduled for today.');
+            } catch (error) {
+                console.error('Error resuming contract:', error);
+                alert('Error resuming contract. Please try again.');
+            }
+        };
+
+        // Edit Site
+        window.editSite = async (siteId) => {
+            console.log('editSite called with siteId:', siteId);
+            const site = sites.find(s => s.id === siteId);
+            console.log('Found site:', site);
+            if (!site) {
+                console.error('Site not found');
+                return;
+            }
+
+            // Open modal first
+            const modal = document.getElementById('addSiteModal');
+            if (!modal) {
+                console.error('Modal not found');
+                return;
+            }
+            modal.classList.add('active');
+
+            // Wait for modal to be visible before populating
+            setTimeout(() => {
+                // Populate form with existing data
+                const fields = {
+                    siteName: site.name,
+                    siteAddress: site.address,
+                    siteContact: site.contact || '',
+                    sitePhone: site.phone || '',
+                    sitePrice: site.price,
+                    siteFrequency: site.frequency,
+                    siteNotes: site.notes || '',
+                    contractNotes: site.contractNotes || ''
+                };
+
+                for (const [fieldId, value] of Object.entries(fields)) {
+                    const element = document.getElementById(fieldId);
+                    if (element) {
+                        element.value = value;
+                    } else {
+                        console.warn(`Field ${fieldId} not found`);
+                    }
+                }
+
+                // Change form title and button
+                const titleElement = document.querySelector('#addSiteModal .modal-title');
+                if (titleElement) titleElement.textContent = 'Edit Site';
+                
+                const submitBtn = document.querySelector('#addSiteForm button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.textContent = 'Update Site';
+                    submitBtn.onclick = async (e) => {
+                e.preventDefault();
+                
+                const updatedData = {
+                    name: document.getElementById('siteName').value,
+                    address: document.getElementById('siteAddress').value,
+                    contact: document.getElementById('siteContact').value,
+                    phone: document.getElementById('sitePhone').value,
+                    price: parseFloat(document.getElementById('sitePrice').value),
+                    frequency: parseInt(document.getElementById('siteFrequency').value),
+                    notes: document.getElementById('siteNotes').value,
+                    contractNotes: document.getElementById('contractNotes').value
+                };
+
+                try {
+                    const userId = window.currentUser.uid;
+                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), updatedData);
+
+                    // Update all pending visits for this site
+                    const siteVisits = visits.filter(v => v.siteId === siteId && v.status === 'pending');
+                    for (const visit of siteVisits) {
+                        await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                            siteName: updatedData.name,
+                            siteAddress: updatedData.address,
+                            price: updatedData.price,
+                            frequency: updatedData.frequency
+                        });
+                    }
+
+                    closeAddSiteModal();
+                    alert('✅ Site updated successfully!');
+                } catch (error) {
+                    console.error('Error updating site:', error);
+                    alert('Error updating site. Please try again.');
+                }
+            };
+
+            console.log('Opening edit modal...');
+            console.log('Modal should now be visible');
+                } else {
+                    console.error('Submit button not found');
+                }
+            }, 100); // Wait 100ms for modal to render
+        };
+
+        // Delete Site
+        window.deleteSite = async (siteId) => {
+            const site = sites.find(s => s.id === siteId);
+            if (!site) return;
+
+            if (!confirm(`Are you sure you want to delete "${site.name}"?\n\nThis will also delete all associated visits.\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const userId = window.currentUser.uid;
+                
+                // Delete all visits for this site
+                const siteVisits = visits.filter(v => v.siteId === siteId);
+                for (const visit of siteVisits) {
+                    await window.dbRemove(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`));
+                }
+
+                // Delete the site
+                await window.dbRemove(window.dbRef(window.database, `users/${userId}/sites/${siteId}`));
+
+                alert(`✅ Site "${site.name}" and all associated visits deleted successfully.`);
+            } catch (error) {
+                console.error('Error deleting site:', error);
+                alert('Error deleting site: ' + error.message);
+            }
+        };
+
+        // ============================================
+        // PROJECT FUNCTIONS
+        // ============================================
+
+        // Render Projects
+        function renderProjects() {
+            const container = document.getElementById('projectsContainer');
+            
+            if (projects.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📐</div>
+                        <div class="empty-state-title">No projects yet</div>
+                        <div class="empty-state-text">Add your first landscaping project or one-off job</div>
+                        <button class="btn btn-primary" onclick="openAddProjectModal()">+ Add Your First Project</button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Separate by status
+            const notStarted = projects.filter(p => p.status === 'not-started');
+            const inProgress = projects.filter(p => p.status === 'in-progress');
+            const completed = projects.filter(p => p.status === 'completed');
+
+            let html = '';
+
+            // In Progress Section
+            if (inProgress.length > 0) {
+                html += `
+                    <div style="background: #dbeafe; padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 1.5rem;">
+                        <h3 style="color: #1e40af; margin-bottom: 0.5rem; font-size: 1.125rem;">🚧 In Progress (${inProgress.length})</h3>
+                    </div>
+                `;
+                html += inProgress.map(renderProjectCard).join('');
+            }
+
+            // Not Started Section
+            if (notStarted.length > 0) {
+                html += `
+                    <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 1.5rem; margin-top: 1.5rem;">
+                        <h3 style="color: #92400e; margin-bottom: 0.5rem; font-size: 1.125rem;">📋 Not Started (${notStarted.length})</h3>
+                    </div>
+                `;
+                html += notStarted.map(renderProjectCard).join('');
+            }
+
+            // Completed Section (show last 5)
+            if (completed.length > 0) {
+                html += `
+                    <div style="background: #d1fae5; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--success); margin-bottom: 1.5rem; margin-top: 1.5rem;">
+                        <h3 style="color: #065f46; margin-bottom: 0.5rem; font-size: 1.125rem;">✅ Recently Completed</h3>
+                    </div>
+                `;
+                html += completed.slice(-5).reverse().map(renderProjectCard).join('');
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderProjectCard(project) {
+            const statusColors = {
+                'not-started': { bg: '#fef3c7', text: '#92400e', label: 'Not Started' },
+                'in-progress': { bg: '#dbeafe', text: '#1e40af', label: 'In Progress' },
+                'completed': { bg: '#d1fae5', text: '#065f46', label: 'Completed' }
+            };
+
+            const status = statusColors[project.status];
+            const startDate = new Date(project.startDate).toLocaleDateString('en-GB');
+            const endDate = new Date(project.expectedEnd).toLocaleDateString('en-GB');
+
+            return `
+                <div class="site-card" style="border-left: 4px solid ${status.bg};">
+                    <div class="site-header">
+                        <div>
+                            <div class="site-name">📐 ${project.projectName}</div>
+                            <div class="site-address">${project.projectType} • ${project.clientName}</div>
+                            <div class="site-address" style="margin-top: 0.25rem;">${project.address}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="visit-status" style="background: ${status.bg}; color: ${status.text}; padding: 0.375rem 0.875rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                                ${status.label}
+                            </span>
+                            ${project.status !== 'completed' ? `
+                                <button class="btn btn-secondary" onclick="editProject('${project.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                    ✏️ Edit
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteProject('${project.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                    🗑️ Delete
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="site-meta">
+                        <div class="meta-item">
+                            <div class="meta-label">Price</div>
+                            <div class="meta-value">£${project.price.toFixed(2)}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Start Date</div>
+                            <div class="meta-value">${startDate}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">${project.status === 'completed' ? 'Completed' : 'Expected End'}</div>
+                            <div class="meta-value">${project.actualCompletionDate ? new Date(project.actualCompletionDate).toLocaleDateString('en-GB') : endDate}</div>
+                        </div>
+                        ${project.contact ? `
+                            <div class="meta-item">
+                                <div class="meta-label">Contact</div>
+                                <div class="meta-value">${project.contact}</div>
+                            </div>
+                        ` : ''}
+                        ${project.phone ? `
+                            <div class="meta-item">
+                                <div class="meta-label">Phone</div>
+                                <div class="meta-value">${project.phone}</div>
+                            </div>
+                        ` : ''}
+                        ${project.description ? `
+                            <div class="meta-item" style="grid-column: 1 / -1; background: var(--gray-50); padding: 0.75rem; border-radius: 6px;">
+                                <div class="meta-label">Project Description</div>
+                                <div class="meta-value" style="white-space: pre-wrap;">${project.description}</div>
+                            </div>
+                        ` : ''}
+                        ${project.notes ? `
+                            <div class="meta-item" style="grid-column: 1 / -1;">
+                                <div class="meta-label">Notes</div>
+                                <div class="meta-value">${project.notes}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${project.status !== 'completed' ? `
+                        <!-- Project Updates Section -->
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <h4 style="margin: 0; font-size: 0.95rem; color: var(--gray-700);">📝 Project Updates</h4>
+                                <button class="btn btn-secondary" onclick="openAddUpdateModal('${project.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                    + Add Update
+                                </button>
+                            </div>
+                            <div id="projectUpdates-${project.id}">
+                                ${project.updates && project.updates.length > 0 ? `
+                                    <div style="max-height: 200px; overflow-y: auto;">
+                                        ${project.updates.map(update => `
+                                            <div style="background: var(--gray-50); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid var(--primary);">
+                                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.25rem;">
+                                                    <div style="font-size: 0.8rem; color: var(--gray-500);">
+                                                        ${new Date(update.timestamp).toLocaleDateString('en-GB', { 
+                                                            day: 'numeric', 
+                                                            month: 'short', 
+                                                            year: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </div>
+                                                    <button onclick="deleteProjectUpdate('${project.id}', '${update.id}')" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 0; font-size: 0.85rem;" title="Delete update">🗑️</button>
+                                                </div>
+                                                <div style="color: var(--gray-700); font-size: 0.9rem; white-space: pre-wrap;">${update.text}</div>
+                                            </div>
+                                        `).reverse().join('')}
+                                    </div>
+                                ` : `
+                                    <div style="text-align: center; padding: 1rem; color: var(--gray-400); font-size: 0.9rem;">
+                                        No updates yet - click "Add Update" to track progress
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${project.status !== 'completed' ? `
+                        <div style="display: flex; gap: 0.75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                            ${project.status === 'not-started' ? `
+                                <button class="btn btn-primary" onclick="startProject('${project.id}')" style="flex: 1;">
+                                    ▶️ Start Project
+                                </button>
+                            ` : `
+                                <button class="btn btn-success" onclick="openCompleteProjectModal('${project.id}')" style="flex: 1;">
+                                    ✓ Complete Project
+                                </button>
+                            `}
+                        </div>
+                    ` : `
+                        ${project.invoiceStatus === 'pending' ? `
+                            <div style="display: flex; gap: 0.75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                                <button class="btn btn-success" onclick="markProjectInvoiced('${project.id}')" style="flex: 1;">
+                                    ✓ Mark Invoiced
+                                </button>
+                            </div>
+                        ` : ''}
+                    `}
+                </div>
+            `;
+        }
+
+        // Open Add Project Modal
+        window.openAddProjectModal = () => {
+            document.getElementById('addProjectModal').classList.add('active');
+            document.getElementById('projectStartDate').valueAsDate = new Date();
+        };
+
+        window.closeAddProjectModal = () => {
+            document.getElementById('addProjectModal').classList.remove('active');
+            document.getElementById('addProjectForm').reset();
+        };
+
+        // Add Project Handler
+        document.getElementById('addProjectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const projectData = {
+                projectName: document.getElementById('projectName').value,
+                projectType: document.getElementById('projectType').value,
+                clientName: document.getElementById('projectClientName').value,
+                address: document.getElementById('projectAddress').value,
+                contact: document.getElementById('projectContact').value,
+                phone: document.getElementById('projectPhone').value,
+                email: document.getElementById('projectEmail').value,
+                price: parseFloat(document.getElementById('projectPrice').value),
+                startDate: document.getElementById('projectStartDate').value,
+                expectedEnd: document.getElementById('projectExpectedEnd').value,
+                description: document.getElementById('projectDescription').value,
+                notes: document.getElementById('projectNotes').value,
+                status: 'not-started',
+                invoiceStatus: 'pending',
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                const userId = window.currentUser.uid;
+                const projectRef = window.dbPush(window.dbRef(window.database, `users/${userId}/projects`));
+                await window.dbSet(projectRef, projectData);
+
+                closeAddProjectModal();
+                alert('✅ Project added successfully!');
+            } catch (error) {
+                console.error('Error adding project:', error);
+                alert('Error adding project. Please try again.');
+            }
+        });
+
+        // Start Project
+        window.startProject = async (projectId) => {
+            if (!confirm('Mark this project as started?')) return;
+            
+            try {
+                const userId = window.currentUser.uid;
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                    status: 'in-progress',
+                    actualStartDate: new Date().toISOString().split('T')[0]
+                });
+                alert('✅ Project started!');
+            } catch (error) {
+                console.error('Error starting project:', error);
+                alert('Error starting project. Please try again.');
+            }
+        };
+
+        // Initialize project signature pad
+        function initProjectSignaturePad() {
+            const canvas = document.getElementById('projectSignaturePad');
+            if (!canvas) return;
+            
+            projectSignaturePad = canvas.getContext('2d');
+            projectSignaturePad.strokeStyle = '#000';
+            projectSignaturePad.lineWidth = 2;
+            projectSignaturePad.lineCap = 'round';
+            
+            let lastX = 0;
+            let lastY = 0;
+            let isDrawing = false;
+            
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                lastX = touch.clientX - rect.left;
+                lastY = touch.clientY - rect.top;
+                isDrawing = true;
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                
+                projectSignaturePad.beginPath();
+                projectSignaturePad.moveTo(lastX, lastY);
+                projectSignaturePad.lineTo(x, y);
+                projectSignaturePad.stroke();
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            canvas.addEventListener('touchend', () => {
+                isDrawing = false;
+            });
+            
+            canvas.addEventListener('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                lastX = e.clientX - rect.left;
+                lastY = e.clientY - rect.top;
+                isDrawing = true;
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                projectSignaturePad.beginPath();
+                projectSignaturePad.moveTo(lastX, lastY);
+                projectSignaturePad.lineTo(x, y);
+                projectSignaturePad.stroke();
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                isDrawing = false;
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                isDrawing = false;
+            });
+        }
+
+        window.clearProjectSignature = function() {
+            const canvas = document.getElementById('projectSignaturePad');
+            if (projectSignaturePad) {
+                projectSignaturePad.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+
+        // Open Complete Project Modal
+        window.openCompleteProjectModal = (projectId) => {
+            const project = projects.find(p => p.id === projectId);
+            if (!project) return;
+            
+            document.getElementById('completeProjectId').value = projectId;
+            document.getElementById('projectCompletedBy').value = window.currentUser.email;
+            document.getElementById('projectActualEndDate').valueAsDate = new Date();
+            
+            if (!projectSignaturePad) {
+                initProjectSignaturePad();
+            }
+            
+            setTimeout(() => {
+                const canvas = document.getElementById('projectSignaturePad');
+                if (canvas && projectSignaturePad) {
+                    projectSignaturePad.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }, 100);
+            
+            document.getElementById('completeProjectModal').classList.add('active');
+        };
+
+        window.closeCompleteProjectModal = () => {
+            document.getElementById('completeProjectModal').classList.remove('active');
+            document.getElementById('completeProjectForm').reset();
+            
+            const canvas = document.getElementById('projectSignaturePad');
+            if (canvas && projectSignaturePad) {
+                projectSignaturePad.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+
+        // Complete Project Handler
+        document.getElementById('completeProjectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const projectId = document.getElementById('completeProjectId').value;
+            const completedBy = document.getElementById('projectCompletedBy').value;
+            const actualEndDate = document.getElementById('projectActualEndDate').value;
+            const completionNotes = document.getElementById('projectCompletionNotes').value;
+            const customerName = document.getElementById('projectCustomerName').value;
+
+            // Validate signature
+            const canvas = document.getElementById('projectSignaturePad');
+            const signatureData = canvas.toDataURL();
+            const blankCanvas = document.createElement('canvas');
+            blankCanvas.width = canvas.width;
+            blankCanvas.height = canvas.height;
+            if (signatureData === blankCanvas.toDataURL()) {
+                alert('Please get customer signature before completing.');
+                return;
+            }
+
+            const project = projects.find(p => p.id === projectId);
+            if (!project) return;
+
+            try {
+                const userId = window.currentUser.uid;
+                
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                    status: 'completed',
+                    completedBy: completedBy,
+                    actualCompletionDate: actualEndDate,
+                    completionNotes: completionNotes,
+                    customerName: customerName,
+                    customerSignature: signatureData,
+                    completedAt: new Date().toISOString()
+                });
+
+                closeCompleteProjectModal();
+                
+                // Send email notification
+                sendProjectInvoiceEmail(project, completedBy, actualEndDate, completionNotes, customerName);
+                
+                alert('✅ Project completed!\n📧 Email notification sent\n\nProject moved to invoice tracking');
+            } catch (error) {
+                console.error('Error completing project:', error);
+                alert('Error completing project. Please try again.');
+            }
+        });
+
+        // Send Project Invoice Email
+        function sendProjectInvoiceEmail(project, completedBy, completedDate, notes, customerName) {
+            const emailSubject = `Invoice Required: ${project.projectName} - Completed ${completedDate}`;
+            
+            const emailBody = `
+Project Completion Details
+====================================
+
+Project Information:
+- Project Name: ${project.projectName}
+- Project Type: ${project.projectType}
+- Client: ${project.clientName}
+- Address: ${project.address}
+
+Work Details:
+- Completed By: ${completedBy}
+- Completed On: ${new Date(completedDate).toLocaleDateString('en-GB')}
+- Invoice Amount: £${project.price.toFixed(2)}
+
+Project Description:
+${project.description}
+
+${notes ? `Completion Notes:\n${notes}\n` : ''}
+Customer Sign-Off:
+- Customer Name: ${customerName}
+- Signature: Captured digitally (view in app Projects tab)
+
+REMINDER: 
+- Field staff should have before/after photos on their phone
+- Customer signature captured digitally
+- Project completion confirmed
+
+Please prepare and send invoice to the customer.
+
+---
+This notification was generated automatically by Roundwood Route Manager.
+            `.trim();
+
+            const mailto = `mailto:office@roundwoodsolutions.co.uk?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+            window.location.href = mailto;
+        }
+
+        // Delete Project
+        window.deleteProject = async (projectId) => {
+            const project = projects.find(p => p.id === projectId);
+            if (!project) return;
+
+            if (!confirm(`Are you sure you want to delete "${project.projectName}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const userId = window.currentUser.uid;
+                await window.dbRemove(window.dbRef(window.database, `users/${userId}/projects/${projectId}`));
+                alert(`✅ Project "${project.projectName}" deleted successfully.`);
+            } catch (error) {
+                console.error('Error deleting project:', error);
+                alert('Error deleting project: ' + error.message);
+            }
+        };
+
+        // Edit Project
+        window.editProject = async (projectId) => {
+            const project = projects.find(p => p.id === projectId);
+            if (!project) {
+                console.error('Project not found');
+                return;
+            }
+
+            // Open modal first
+            const modal = document.getElementById('addProjectModal');
+            if (!modal) {
+                console.error('Project modal not found');
+                return;
+            }
+            modal.classList.add('active');
+
+            // Wait for modal to render then populate
+            setTimeout(() => {
+                const fields = {
+                    projectName: project.projectName,
+                    projectType: project.projectType,
+                    clientName: project.clientName,
+                    projectAddress: project.address,
+                    projectContact: project.contact || '',
+                    projectPhone: project.phone || '',
+                    projectPrice: project.price,
+                    projectStartDate: project.startDate,
+                    projectExpectedEnd: project.expectedEnd,
+                    projectDescription: project.description || '',
+                    projectNotes: project.notes || ''
+                };
+
+                for (const [fieldId, value] of Object.entries(fields)) {
+                    const element = document.getElementById(fieldId);
+                    if (element) {
+                        element.value = value;
+                    } else {
+                        console.warn(`Field ${fieldId} not found`);
+                    }
+                }
+
+                // Change form title and button
+                const titleElement = document.querySelector('#addProjectModal .modal-title');
+                if (titleElement) titleElement.textContent = 'Edit Project';
+                
+                const submitBtn = document.querySelector('#addProjectForm button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.textContent = 'Update Project';
+                    submitBtn.onclick = async (e) => {
+                        e.preventDefault();
+                        
+                        const updatedData = {
+                            projectName: document.getElementById('projectName').value,
+                            projectType: document.getElementById('projectType').value,
+                            clientName: document.getElementById('clientName').value,
+                            address: document.getElementById('projectAddress').value,
+                            contact: document.getElementById('projectContact').value,
+                            phone: document.getElementById('projectPhone').value,
+                            price: parseFloat(document.getElementById('projectPrice').value),
+                            startDate: document.getElementById('projectStartDate').value,
+                            expectedEnd: document.getElementById('projectExpectedEnd').value,
+                            description: document.getElementById('projectDescription').value,
+                            notes: document.getElementById('projectNotes').value
+                        };
+
+                        try {
+                            const userId = window.currentUser.uid;
+                            await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), updatedData);
+                            closeAddProjectModal();
+                            alert('✅ Project updated successfully!');
+                        } catch (error) {
+                            console.error('Error updating project:', error);
+                            alert('Error updating project. Please try again.');
+                        }
+                    };
+                }
+            }, 100);
+        };
+
+        // Mark Project Invoiced
+        window.markProjectInvoiced = async (projectId) => {
+            if (!confirm('Mark this project as invoiced?')) return;
+            
+            try {
+                const userId = window.currentUser.uid;
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                    invoiceStatus: 'sent',
+                    invoiceSentDate: new Date().toISOString().split('T')[0]
+                });
+            } catch (error) {
+                console.error('Error updating invoice status:', error);
+                alert('Error updating invoice status. Please try again.');
+            }
+        };
+
+        // ============================================
+        // PROJECT UPDATE FUNCTIONS
+        // ============================================
+
+        // Open Add Update Modal
+        window.openAddUpdateModal = (projectId) => {
+            document.getElementById('updateProjectId').value = projectId;
+            document.getElementById('addUpdateModal').classList.add('active');
+        };
+
+        // Close Add Update Modal
+        window.closeAddUpdateModal = () => {
+            document.getElementById('addUpdateModal').classList.remove('active');
+            document.getElementById('addUpdateForm').reset();
+        };
+
+        // Add Project Update
+        document.getElementById('addUpdateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const projectId = document.getElementById('updateProjectId').value;
+            const updateText = document.getElementById('updateText').value;
+            
+            const project = projects.find(p => p.id === projectId);
+            if (!project) return;
+
+            try {
+                const userId = window.currentUser.uid;
+                
+                // Get existing updates or create new array
+                const existingUpdates = project.updates || [];
+                
+                // Create new update
+                const newUpdate = {
+                    id: Date.now().toString(),
+                    text: updateText,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Add to beginning of array (newest first)
+                const updatedUpdates = [...existingUpdates, newUpdate];
+                
+                // Save to Firebase
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                    updates: updatedUpdates
+                });
+
+                closeAddUpdateModal();
+                alert('✅ Update added successfully!');
+            } catch (error) {
+                console.error('Error adding update:', error);
+                alert('Error adding update. Please try again.');
+            }
+        });
+
+        // Delete Project Update
+        window.deleteProjectUpdate = async (projectId, updateId) => {
+            if (!confirm('Delete this update?')) return;
+            
+            const project = projects.find(p => p.id === projectId);
+            if (!project) return;
+
+            try {
+                const userId = window.currentUser.uid;
+                
+                // Remove the update from the array
+                const updatedUpdates = (project.updates || []).filter(u => u.id !== updateId);
+                
+                // Save to Firebase
+                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                    updates: updatedUpdates
+                });
+
+                alert('✅ Update deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting update:', error);
+                alert('Error deleting update. Please try again.');
+            }
+        };
 
         // Render Visits
         function renderVisits() {
@@ -1839,11 +3193,112 @@ This notification was generated automatically by Roundwood Route Manager.
         window.openCompleteVisitModal = (visitId) => {
             document.getElementById('completeVisitId').value = visitId;
             document.getElementById('completeVisitModal').classList.add('active');
+            
+            // Initialize signature pad after modal is visible
+            setTimeout(() => {
+                initSignaturePad();
+            }, 100);
         };
 
         window.closeCompleteVisitModal = () => {
             document.getElementById('completeVisitModal').classList.remove('active');
             document.getElementById('completeVisitForm').reset();
+            clearSignature();
+        };
+
+        // Initialize signature pad
+        let signaturePad = null;
+        
+        function initSignaturePad() {
+            const canvas = document.getElementById('signaturePad');
+            if (!canvas) return;
+            
+            signaturePad = canvas.getContext('2d');
+            signaturePad.strokeStyle = '#000';
+            signaturePad.lineWidth = 2;
+            signaturePad.lineCap = 'round';
+            
+            let lastX = 0;
+            let lastY = 0;
+            let isDrawing = false;
+            
+            // Remove old event listeners by cloning the canvas
+            const newCanvas = canvas.cloneNode(true);
+            canvas.parentNode.replaceChild(newCanvas, canvas);
+            const ctx = newCanvas.getContext('2d');
+            signaturePad = ctx;
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            
+            // Touch events
+            newCanvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = newCanvas.getBoundingClientRect();
+                lastX = touch.clientX - rect.left;
+                lastY = touch.clientY - rect.top;
+                isDrawing = true;
+            });
+            
+            newCanvas.addEventListener('touchmove', (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = newCanvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            newCanvas.addEventListener('touchend', () => {
+                isDrawing = false;
+            });
+            
+            // Mouse events
+            newCanvas.addEventListener('mousedown', (e) => {
+                const rect = newCanvas.getBoundingClientRect();
+                lastX = e.clientX - rect.left;
+                lastY = e.clientY - rect.top;
+                isDrawing = true;
+            });
+            
+            newCanvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing) return;
+                const rect = newCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            newCanvas.addEventListener('mouseup', () => {
+                isDrawing = false;
+            });
+            
+            newCanvas.addEventListener('mouseleave', () => {
+                isDrawing = false;
+            });
+        }
+
+        window.clearSignature = function() {
+            const canvas = document.getElementById('signaturePad');
+            if (canvas && signaturePad) {
+                signaturePad.clearRect(0, 0, canvas.width, canvas.height);
+            }
         };
 
         // Complete Visit Handler
@@ -1852,7 +3307,28 @@ This notification was generated automatically by Roundwood Route Manager.
             
             const visitId = document.getElementById('completeVisitId').value;
             const completedBy = document.getElementById('completedBy').value;
-            const notes = document.getElementById('completionNotes').value;
+            const customerName = document.getElementById('customerName').value;
+            
+            // Get checklist values
+            const workCompleted = {
+                weedRemoval: document.getElementById('weedRemoval').checked,
+                strimming: document.getElementById('strimming').checked,
+                weedSuppressant: document.getElementById('weedSuppressant').checked,
+                generalTidy: document.getElementById('generalTidy').checked
+            };
+            
+            const siteNotes = document.getElementById('siteNotes').value;
+
+            // Validate signature
+            const canvas = document.getElementById('signaturePad');
+            const signatureData = canvas.toDataURL();
+            const blankCanvas = document.createElement('canvas');
+            blankCanvas.width = canvas.width;
+            blankCanvas.height = canvas.height;
+            if (signatureData === blankCanvas.toDataURL()) {
+                alert('Please get customer signature before completing.');
+                return;
+            }
 
             const visit = visits.find(v => v.id === visitId);
             if (!visit) return;
@@ -1866,27 +3342,33 @@ This notification was generated automatically by Roundwood Route Manager.
                     status: 'completed',
                     completedDate: completedDate,
                     completedBy: completedBy,
-                    completionNotes: notes,
+                    customerName: customerName,
+                    customerSignature: signatureData,
+                    workCompleted: workCompleted,
+                    siteNotes: siteNotes,
                     invoiceStatus: 'pending'
                 });
 
-                // Create next visit
-                const nextVisitDate = new Date(visit.scheduledDate);
-                nextVisitDate.setDate(nextVisitDate.getDate() + visit.frequency);
+                // Create next visit (unless site is paused)
+                const site = sites.find(s => s.id === visit.siteId);
+                if (!site || !site.paused) {
+                    const nextVisitDate = new Date(visit.scheduledDate);
+                    nextVisitDate.setDate(nextVisitDate.getDate() + visit.frequency);
 
-                const nextVisitData = {
-                    siteId: visit.siteId,
-                    siteName: visit.siteName,
-                    siteAddress: visit.siteAddress,
-                    scheduledDate: nextVisitDate.toISOString().split('T')[0],
-                    price: visit.price,
-                    frequency: visit.frequency,
-                    status: 'pending',
-                    createdAt: new Date().toISOString()
-                };
+                    const nextVisitData = {
+                        siteId: visit.siteId,
+                        siteName: visit.siteName,
+                        siteAddress: visit.siteAddress,
+                        scheduledDate: nextVisitDate.toISOString().split('T')[0],
+                        price: visit.price,
+                        frequency: visit.frequency,
+                        status: 'pending',
+                        createdAt: new Date().toISOString()
+                    };
 
-                const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
-                await window.dbSet(nextVisitRef, nextVisitData);
+                    const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                    await window.dbSet(nextVisitRef, nextVisitData);
+                }
 
                 closeCompleteVisitModal();
 
@@ -1895,7 +3377,9 @@ This notification was generated automatically by Roundwood Route Manager.
                     ...visit,
                     completedDate: completedDate,
                     completedBy: completedBy,
-                    completionNotes: notes
+                    customerName: customerName,
+                    workCompleted: workCompleted,
+                    siteNotes: siteNotes
                 };
                 
                 // Open email client with pre-filled details
@@ -2054,18 +3538,169 @@ This notification was generated automatically by Roundwood Route Manager.
 
 
         // Render Visit Reminders (3 days ahead)
+        // Render Due Today on Dashboard
+        function renderDueToday() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // Get today's visits
+            const todayVisits = visits
+                .filter(v => v.status === 'pending' && !v.hidden && v.scheduledDate === todayStr)
+                .map(v => ({ ...v, type: 'visit' }));
+            
+            // Get today's projects
+            const todayProjects = projects
+                .filter(p => p.status !== 'completed' && p.startDate === todayStr)
+                .map(p => ({ ...p, type: 'project' }));
+            
+            const todayItems = [...todayVisits, ...todayProjects];
+            
+            const card = document.getElementById('dueTodayCard');
+            const container = document.getElementById('dueTodayContent');
+            const badge = document.getElementById('dueTodayBadge');
+            
+            if (!card || !container) return;
+            
+            if (todayItems.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+            
+            card.style.display = 'block';
+            if (badge) badge.textContent = todayItems.length;
+            container.innerHTML = todayItems.map(item => {
+                if (item.type === 'project') {
+                    return `
+                        <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid #8b5cf6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600; color: #1f2937;">📐 ${item.projectName}</div>
+                                    <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                                        ${item.projectType} • ${item.clientName}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: #8b5cf6; margin-top: 0.375rem; font-weight: 500;">
+                                        ${item.status === 'not-started' ? 'Starting today' : 'In Progress'}
+                                    </div>
+                                </div>
+                                <div>
+                                    ${item.status === 'not-started' ? 
+                                        `<button class="btn btn-primary" onclick="startProject('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">▶️ Start</button>` :
+                                        `<button class="btn btn-success" onclick="openCompleteProjectModal('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">✓ Complete</button>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid var(--success);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600; color: #1f2937;">${item.siteName}</div>
+                                    <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                                        ${item.siteAddress}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--success); margin-top: 0.375rem; font-weight: 500;">
+                                        £${item.price.toFixed(2)}
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-success" onclick="openCompleteVisitModal('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">
+                                        ✓ Complete Visit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        // Render Active Projects on Dashboard
+        function renderActiveProjects() {
+            const activeProjects = projects.filter(p => p.status !== 'completed');
+            
+            const card = document.getElementById('activeProjectsCard');
+            const container = document.getElementById('activeProjectsContent');
+            const badge = document.getElementById('activeProjectsBadge');
+            
+            if (!card || !container) return;
+            
+            if (activeProjects.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+            
+            card.style.display = 'block';
+            if (badge) badge.textContent = activeProjects.length;
+            container.innerHTML = activeProjects.map(project => {
+                const startDate = new Date(project.startDate);
+                const endDate = new Date(project.expectedEnd);
+                const today = new Date();
+                const daysUntilStart = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));
+                const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                
+                const statusInfo = {
+                    'not-started': {
+                        bg: '#fef3c7',
+                        text: '#92400e',
+                        label: daysUntilStart > 0 ? `Starts in ${daysUntilStart} day${daysUntilStart > 1 ? 's' : ''}` : 'Starts today',
+                        action: daysUntilStart <= 0 ? `<button class="btn btn-primary" onclick="startProject('${project.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">▶️ Start Project</button>` : ''
+                    },
+                    'in-progress': {
+                        bg: '#dbeafe',
+                        text: '#1e40af',
+                        label: daysUntilEnd > 0 ? `Due in ${daysUntilEnd} day${daysUntilEnd > 1 ? 's' : ''}` : 'Due today',
+                        action: `<button class="btn btn-success" onclick="openCompleteProjectModal('${project.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">✓ Complete</button>`
+                    }
+                };
+                
+                const status = statusInfo[project.status];
+                
+                return `
+                    <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid ${status.bg};">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #1f2937;">📐 ${project.projectName}</div>
+                                <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                                    ${project.projectType} • ${project.clientName}
+                                </div>
+                                <div style="font-size: 0.85rem; color: ${status.text}; margin-top: 0.375rem; font-weight: 500;">
+                                    ${status.label}
+                                </div>
+                            </div>
+                            <div>
+                                ${status.action}
+                            </div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #9ca3af; margin-top: 0.5rem;">
+                            ${startDate.toLocaleDateString('en-GB')} → ${endDate.toLocaleDateString('en-GB')} • £${project.price.toFixed(2)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render Visit Reminders
         function renderVisitReminders() {
             const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStr = today.toISOString().split('T')[0];
+            
             const threeDaysFromNow = new Date(today);
             threeDaysFromNow.setDate(today.getDate() + 3);
             const threeDaysStr = threeDaysFromNow.toISOString().split('T')[0];
             
+            // Get visits between tomorrow and 3 days from now
             const upcomingVisits = visits
-                .filter(v => v.status === 'pending' && !v.hidden && v.scheduledDate === threeDaysStr)
+                .filter(v => {
+                    if (v.status !== 'pending' || v.hidden) return false;
+                    return v.scheduledDate > todayStr && v.scheduledDate <= threeDaysStr;
+                })
                 .sort((a, b) => a.siteName.localeCompare(b.siteName));
             
             const card = document.getElementById('visitRemindersCard');
             const container = document.getElementById('visitRemindersContent');
+            const badge = document.getElementById('remindersBadge');
             
             if (upcomingVisits.length === 0) {
                 card.style.display = 'none';
@@ -2073,7 +3708,10 @@ This notification was generated automatically by Roundwood Route Manager.
             }
             
             card.style.display = 'block';
-            container.innerHTML = upcomingVisits.map(visit => `
+            if (badge) badge.textContent = upcomingVisits.length;
+            container.innerHTML = upcomingVisits.map(visit => {
+                const daysUntil = Math.ceil((new Date(visit.scheduledDate) - today) / (1000 * 60 * 60 * 24));
+                return `
                 <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #f59e0b;">
                     <div>
                         <div style="font-weight: 600; color: #92400e;">${visit.siteName}</div>
@@ -2081,14 +3719,15 @@ This notification was generated automatically by Roundwood Route Manager.
                             ${visit.siteAddress}
                         </div>
                         <div style="font-size: 0.85rem; color: #a16207; margin-top: 0.25rem;">
-                            📅 ${new Date(visit.scheduledDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            📅 ${new Date(visit.scheduledDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} (in ${daysUntil} day${daysUntil > 1 ? 's' : ''})
                         </div>
                     </div>
                     <button class="btn btn-secondary" onclick="sendCourtesyReminder('${visit.siteName}', '${visit.siteAddress}', '${visit.scheduledDate}')" style="font-size: 0.875rem; white-space: nowrap;">
                         📧 Send Reminder
                     </button>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Send Courtesy Reminder Email
@@ -2138,14 +3777,14 @@ Roundwood Solutions Limited
             const sevenDaysFromNow = new Date(today);
             sevenDaysFromNow.setDate(today.getDate() + 7);
             
-            // Get overdue visits
+            // Get overdue visits (only visits BEFORE today, not today)
             const overdueVisits = visits
                 .filter(v => {
                     if (v.status !== 'pending' || v.hidden) return false;
-                    const visitDate = new Date(v.scheduledDate);
-                    return visitDate < today;
+                    return v.scheduledDate < todayStr; // String comparison: earlier dates are "less than"
                 })
-                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+                .map(v => ({ ...v, type: 'visit', date: v.scheduledDate }))
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
             
             // Get next 7 days visits
             const upcomingVisits = visits
@@ -2154,15 +3793,29 @@ Roundwood Solutions Limited
                     const visitDate = new Date(v.scheduledDate);
                     return visitDate >= today && visitDate <= sevenDaysFromNow;
                 })
-                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+                .map(v => ({ ...v, type: 'visit', date: v.scheduledDate }));
 
-            const allVisits = [...overdueVisits, ...upcomingVisits];
+            // Get projects starting in next 7 days (not started or in progress)
+            const upcomingProjects = projects
+                .filter(p => {
+                    if (p.status === 'completed') return false;
+                    const projectStartDate = new Date(p.startDate);
+                    projectStartDate.setHours(0, 0, 0, 0);
+                    const todayStart = new Date(today);
+                    todayStart.setHours(0, 0, 0, 0);
+                    return projectStartDate >= todayStart && projectStartDate <= sevenDaysFromNow;
+                })
+                .map(p => ({ ...p, type: 'project', date: p.startDate }));
 
-            if (allVisits.length === 0) {
+            // Combine and sort by date
+            const allItems = [...overdueVisits, ...upcomingVisits, ...upcomingProjects]
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (allItems.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📅</div>
-                        <div class="empty-state-text">No overdue or upcoming visits in the next 7 days</div>
+                        <div class="empty-state-text">No overdue or upcoming visits/projects in the next 7 days</div>
                     </div>
                 `;
                 return;
@@ -2180,7 +3833,7 @@ Roundwood Solutions Limited
                 `;
                 
                 html += overdueVisits.map(visit => {
-                    const visitDate = new Date(visit.scheduledDate);
+                    const visitDate = new Date(visit.date);
                     const formattedDate = visitDate.toLocaleDateString('en-GB', { 
                         weekday: 'short', 
                         day: 'numeric', 
@@ -2212,73 +3865,113 @@ Roundwood Solutions Limited
                 }).join('');
             }
             
-            // Render upcoming visits section
-            if (upcomingVisits.length > 0) {
+            // Render upcoming section (visits and projects combined)
+            const upcomingItems = allItems.filter(item => {
+                const itemDate = new Date(item.date);
+                itemDate.setHours(0, 0, 0, 0);
+                const todayStart = new Date(today);
+                todayStart.setHours(0, 0, 0, 0);
+                return itemDate >= todayStart;
+            });
+            if (upcomingItems.length > 0) {
                 if (overdueVisits.length > 0) {
                     html += `
                         <div style="background: #dbeafe; padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 1.5rem 0;">
-                            <h3 style="color: #1e40af; margin-bottom: 0.5rem; font-size: 1.125rem;">📅 Upcoming Visits (Next 7 Days)</h3>
+                            <h3 style="color: #1e40af; margin-bottom: 0.5rem; font-size: 1.125rem;">📅 Upcoming (Next 7 Days)</h3>
                         </div>
                     `;
                 }
                 
-                html += upcomingVisits.map(visit => {
-                    const visitDate = new Date(visit.scheduledDate);
-                    const isToday = visit.scheduledDate === todayStr;
-                    const formattedDate = visitDate.toLocaleDateString('en-GB', { 
+                html += upcomingItems.map(item => {
+                    const itemDate = new Date(item.date);
+                    const isToday = item.date === todayStr;
+                    const formattedDate = itemDate.toLocaleDateString('en-GB', { 
                         weekday: 'short', 
                         day: 'numeric', 
                         month: 'short', 
                         year: 'numeric' 
                     });
 
-                    return `
-                        <div class="visit-card ${isToday ? '' : ''}">
-                            <div class="visit-header">
-                                <div>
-                                    <div class="visit-site">${visit.siteName}</div>
-                                    <div class="visit-date">${formattedDate}</div>
-                                    <div class="site-address" style="margin-top: 0.5rem;">${visit.siteAddress}</div>
+                    if (item.type === 'project') {
+                        // Render project card
+                        const statusLabel = item.status === 'not-started' ? 'Starting' : 'In Progress';
+                        return `
+                            <div class="visit-card" style="border-left-color: #8b5cf6;">
+                                <div class="visit-header">
+                                    <div>
+                                        <div class="visit-site">📐 ${item.projectName}</div>
+                                        <div class="visit-date">${formattedDate} • ${item.projectType}</div>
+                                        <div class="site-address" style="margin-top: 0.5rem;">${item.clientName} - ${item.address}</div>
+                                    </div>
+                                    <span class="visit-status" style="background: #ede9fe; color: #6b21a8;">
+                                        ${statusLabel}
+                                    </span>
                                 </div>
-                                <span class="visit-status ${isToday ? 'status-pending' : 'status-pending'}" style="${isToday ? 'background: #fef3c7; color: #92400e;' : ''}">
-                                    ${isToday ? 'Today' : formattedDate.split(',')[0]}
-                                </span>
+                                ${item.status === 'not-started' && isToday ? `
+                                    <div class="visit-actions">
+                                        <button class="btn btn-primary" onclick="startProject('${item.id}')" style="flex: 1;">
+                                            ▶️ Start Project
+                                        </button>
+                                    </div>
+                                ` : ''}
                             </div>
-                            ${isToday ? `
-                                <div class="visit-actions">
-                                    <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="flex: 1;">
-                                        ✓ Complete Visit
-                                    </button>
+                        `;
+                    } else {
+                        // Render visit card
+                        return `
+                            <div class="visit-card">
+                                <div class="visit-header">
+                                    <div>
+                                        <div class="visit-site">${item.siteName}</div>
+                                        <div class="visit-date">${formattedDate}</div>
+                                        <div class="site-address" style="margin-top: 0.5rem;">${item.siteAddress}</div>
+                                    </div>
+                                    <span class="visit-status ${isToday ? 'status-pending' : 'status-pending'}" style="${isToday ? 'background: #fef3c7; color: #92400e;' : ''}">
+                                        ${isToday ? 'Today' : formattedDate.split(',')[0]}
+                                    </span>
                                 </div>
-                            ` : ''}
-                        </div>
-                    `;
+                                ${isToday ? `
+                                    <div class="visit-actions">
+                                        <button class="btn btn-success" onclick="openCompleteVisitModal('${item.id}')" style="flex: 1;">
+                                            ✓ Complete Visit
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
                 }).join('');
             }
             
             container.innerHTML = html;
+            
+            // Update badge count
+            const badge = document.getElementById('nextSevenBadge');
+            if (badge) badge.textContent = allItems.length;
         }
 
         // Update Stats
         function updateStats() {
             const today = new Date().toISOString().split('T')[0];
             
-            document.getElementById('statTotalSites').textContent = sites.length;
-            
+            // Update top nav counts
             const upcomingVisits = visits.filter(v => v.status === 'pending').length;
-            document.getElementById('statUpcomingVisits').textContent = upcomingVisits;
             document.getElementById('upcomingCount').textContent = upcomingVisits;
             
             const uninvoiced = visits.filter(v => v.status === 'completed' && v.invoiceStatus === 'pending').length;
-            document.getElementById('statUninvoiced').textContent = uninvoiced;
-            document.getElementById('uninvoicedCount').textContent = uninvoiced;
+            const uninvoicedProjects = projects.filter(p => p.status === 'completed' && p.invoiceStatus === 'pending').length;
+            document.getElementById('statUninvoiced').textContent = uninvoiced + uninvoicedProjects;
+            document.getElementById('uninvoicedCount').textContent = uninvoiced + uninvoicedProjects;
             
-            const completedToday = visits.filter(v => v.completedDate === today).length;
-            document.getElementById('statCompletedToday').textContent = completedToday;
+            // Update project count
+            const activeProjects = projects.filter(p => p.status !== 'completed').length;
+            document.getElementById('projectsCount').textContent = activeProjects;
             
             // Update dashboard content
             renderSeasonalTips();
             renderMonthlyUpsells();
+            renderActiveProjects();
+            renderDueToday();
             renderVisitReminders();
             renderNextVisits();
         }
@@ -2287,10 +3980,42 @@ Roundwood Solutions Limited
         // REVIEW REQUEST FUNCTIONS
         // ============================================
         
-        function sendReviewRequest(customerEmail, customerName, siteName) {
-            const emailSubject = 'How was our service at ' + siteName + '?';
+        function sendReviewRequest(customerEmail, customerName, siteName, business) {
+            let emailSubject, emailBody;
             
-            const emailBody = `
+            if (business === 'weedcontrol') {
+                // Weed Control Kent template
+                emailSubject = 'How was our weed control service at ' + siteName + '?';
+                
+                emailBody = `
+Hi ${customerName},
+
+Thank you for choosing Weed Control Kent for your professional weed control at ${siteName}.
+
+We'd really appreciate it if you could take 2 minutes to leave us a review on Google. Your feedback helps us improve and helps other property managers find reliable weed control services.
+
+Leave a review here:
+https://g.page/r/CUIoA0XVVFhTEAI/review
+
+Thank you for your time and trust in our services.
+
+Best regards,
+
+Ben Brice
+Director
+Weed Control Kent
+
+📞 07545 642021
+📧 office@roundwoodsolutions.co.uk
+🌐 www.weedcontrolkent.co.uk
+
+🌿 Professional Weed Control Services Across Kent
+                `.trim();
+            } else {
+                // Roundwood Solutions template
+                emailSubject = 'How was our service at ' + siteName + '?';
+                
+                emailBody = `
 Hi ${customerName},
 
 Thank you for choosing Roundwood Solutions for your grounds maintenance at ${siteName}.
@@ -2298,7 +4023,7 @@ Thank you for choosing Roundwood Solutions for your grounds maintenance at ${sit
 We'd really appreciate it if you could take 2 minutes to leave us a review on Google. Your feedback helps us improve and helps other businesses find quality grounds maintenance services.
 
 Leave a review here:
-https://share.google/UWIBan6wN0IrYBI0t
+https://g.page/r/CUIoA0XVVFhTEAI/review
 
 Thank you for your time and trust in our services.
 
@@ -2313,12 +4038,23 @@ Roundwood Solutions Limited
 🌐 www.roundwoodsolutions.co.uk
 
 🌳 Commercial Landscaping and Grounds Maintenance
-            `.trim();
+                `.trim();
+            }
 
             const mailto = `mailto:${customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
             
             return mailto;
         }
+
+        // Update email preview when business changes
+        document.getElementById('reviewBusiness').addEventListener('change', (e) => {
+            const previewText = document.getElementById('emailPreviewText');
+            if (e.target.value === 'weedcontrol') {
+                previewText.textContent = 'The customer will receive a professional email thanking them for choosing Weed Control Kent and asking them to leave a Google review.';
+            } else {
+                previewText.textContent = 'The customer will receive a professional email thanking them for choosing Roundwood Solutions and asking them to leave a Google review.';
+            }
+        });
 
         // Send Review Request Form
         document.getElementById('sendReviewForm').addEventListener('submit', (e) => {
@@ -2327,8 +4063,9 @@ Roundwood Solutions Limited
             const customerName = document.getElementById('reviewCustomerName').value;
             const customerEmail = document.getElementById('reviewCustomerEmail').value;
             const siteName = document.getElementById('reviewSiteName').value;
+            const business = document.getElementById('reviewBusiness').value;
             
-            const reviewLink = sendReviewRequest(customerEmail, customerName, siteName);
+            const reviewLink = sendReviewRequest(customerEmail, customerName, siteName, business);
             window.location.href = reviewLink;
             
             const userId = window.currentUser.uid;
@@ -2336,11 +4073,12 @@ Roundwood Solutions Limited
                 customerName: customerName,
                 customerEmail: customerEmail,
                 siteName: siteName,
+                business: business,
                 sentDate: new Date().toISOString(),
                 sentBy: window.currentUser.email
             };
             
-            const reviewRef = window.dbPush(window.dbRef(window.database, `users/\${userId}/reviewRequests`));
+            const reviewRef = window.dbPush(window.dbRef(window.database, `users/${userId}/reviewRequests`));
             window.dbSet(reviewRef, reviewData).then(() => {
                 document.getElementById('sendReviewForm').reset();
                 alert('✅ Review request email opened!\n\nSend the email from your email client to complete.');
@@ -2355,7 +4093,7 @@ Roundwood Solutions Limited
             if (!window.currentUser) return;
             
             const userId = window.currentUser.uid;
-            const reviewsRef = window.dbRef(window.database, `users/\${userId}/reviewRequests`);
+            const reviewsRef = window.dbRef(window.database, `users/${userId}/reviewRequests`);
             
             window.dbOnValue(reviewsRef, (snapshot) => {
                 const container = document.getElementById('reviewHistoryContainer');
@@ -2381,27 +4119,35 @@ Roundwood Solutions Limited
                 reviews.sort((a, b) => new Date(b.sentDate) - new Date(a.sentDate));
                 const recentReviews = reviews.slice(0, 10);
                 
-                container.innerHTML = recentReviews.map(review => `
+                container.innerHTML = recentReviews.map(review => {
+                    const businessIcon = review.business === 'weedcontrol' ? '🌿' : '🌳';
+                    const businessName = review.business === 'weedcontrol' ? 'Weed Control Kent' : 'Roundwood Solutions';
+                    
+                    return `
                     <div style="padding: 1rem; background: var(--gray-50); border-radius: 8px; margin-bottom: 0.75rem;">
                         <div style="display: flex; justify-content: space-between; align-items: start;">
                             <div>
-                                <div style="font-weight: 600;">\${review.customerName}</div>
-                                <div style="font-size: 0.9rem; color: var(--gray-600);">\${review.customerEmail}</div>
+                                <div style="font-weight: 600;">${review.customerName}</div>
+                                <div style="font-size: 0.9rem; color: var(--gray-600);">${review.customerEmail}</div>
                                 <div style="font-size: 0.85rem; color: var(--gray-500); margin-top: 0.25rem;">
-                                    Site: \${review.siteName}
+                                    Site: ${review.siteName}
+                                </div>
+                                <div style="font-size: 0.85rem; color: var(--primary); margin-top: 0.25rem; font-weight: 500;">
+                                    ${businessIcon} ${businessName}
                                 </div>
                             </div>
                             <div style="text-align: right;">
                                 <div style="font-size: 0.85rem; color: var(--gray-500);">
-                                    \${new Date(review.sentDate).toLocaleDateString('en-GB')}
+                                    ${new Date(review.sentDate).toLocaleDateString('en-GB')}
                                 </div>
                                 <div style="font-size: 0.8rem; color: var(--gray-400);">
-                                    by \${review.sentBy}
+                                    by ${review.sentBy}
                                 </div>
                             </div>
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             });
         }
 
@@ -2483,7 +4229,7 @@ Roundwood Solutions Limited
             };
 
             try {
-                await window.dbSet(window.dbPush(window.dbRef(window.database, `users/\${window.currentUser.uid}/calibrations`)), calculation);
+                await window.dbSet(window.dbPush(window.dbRef(window.database, `users/${window.currentUser.uid}/calibrations`)), calculation);
                 alert('Calculation saved successfully!');
                 document.getElementById('calcName').value = '';
                 loadSavedCalculations();
@@ -2498,7 +4244,7 @@ Roundwood Solutions Limited
             const listDiv = document.getElementById('savedCalcsList');
             listDiv.innerHTML = '<div class="loading">Loading...</div>';
 
-            window.dbOnValue(window.dbRef(window.database, `users/\${window.currentUser.uid}/calibrations`), (snapshot) => {
+            window.dbOnValue(window.dbRef(window.database, `users/${window.currentUser.uid}/calibrations`), (snapshot) => {
                 const calcs = [];
                 snapshot.forEach((child) => {
                     calcs.push({ id: child.key, ...child.val() });
@@ -2532,7 +4278,7 @@ Roundwood Solutions Limited
         }
 
         window.loadCalculation = function(calcId) {
-            window.dbGet(window.dbRef(window.database, `users/\${window.currentUser.uid}/calibrations/\${calcId}`)).then((snapshot) => {
+            window.dbGet(window.dbRef(window.database, `users/${window.currentUser.uid}/calibrations/${calcId}`)).then((snapshot) => {
                 const calc = snapshot.val();
                 if (!calc) return;
 
@@ -2554,7 +4300,7 @@ Roundwood Solutions Limited
             if (!confirm('Are you sure you want to delete this calculation?')) return;
 
             try {
-                await window.dbRemove(window.dbRef(window.database, `users/\${window.currentUser.uid}/calibrations/\${calcId}`));
+                await window.dbRemove(window.dbRef(window.database, `users/${window.currentUser.uid}/calibrations/${calcId}`));
                 alert('Calculation deleted');
                 loadSavedCalculations();
             } catch (error) {
