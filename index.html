@@ -2437,7 +2437,7 @@
         window.dbEqualTo = equalTo;
 
         // Google Drive API Configuration
-        const GOOGLE_API_KEY = 'AIzaSyDzmJiQE84glERxh0UAoSeTtkrKoiHNp44';
+        const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE'; // SECURITY: Add your key locally only - DO NOT commit to GitHub!
         const GOOGLE_CLIENT_ID = '1064499324684-uhn2u0okn82psh87j7v0jvf5mjvbhq5s.apps.googleusercontent.com';
         const GOOGLE_DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
         const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
@@ -5448,6 +5448,38 @@ Roundwood Solutions Limited
                 approvalFields.style.display = requiresApproval === 'yes' ? 'block' : 'none';
             }
         };
+
+        // ========================================
+        // PIPELINE HELPER FUNCTIONS
+        // ========================================
+
+        // Get next job reference number
+        async function getNextJobReference() {
+            try {
+                const userId = window.currentUser.uid;
+                const jobsRef = window.dbRef(window.database, `users/${userId}/pipelineJobs`);
+                const snapshot = await window.dbGet(jobsRef);
+                
+                if (!snapshot.exists()) {
+                    return 101; // Start at 101
+                }
+                
+                const jobs = snapshot.val();
+                let maxRef = 100;
+                
+                Object.values(jobs).forEach(job => {
+                    const ref = parseInt(job.jobReference);
+                    if (!isNaN(ref) && ref > maxRef) {
+                        maxRef = ref;
+                    }
+                });
+                
+                return maxRef + 1;
+            } catch (error) {
+                console.error('Error getting next job reference:', error);
+                return 101; // Default to 101 if error
+            }
+        }
 
         // ========================================
         // PIPELINE FORM SUBMISSION HANDLERS
