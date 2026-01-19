@@ -2682,6 +2682,8 @@
                 });
                 console.log('Loaded pipeline jobs:', window.pipelineJobs.length);
                 if (typeof renderPipeline === 'function') renderPipeline();
+                if (typeof renderInvoices === 'function') renderInvoices();
+                if (typeof updateStats === 'function') updateStats();
             });
             
             // Load review history and saved calculations
@@ -5330,26 +5332,56 @@ Roundwood Solutions Limited
         function updateStats() {
             const today = new Date().toISOString().split('T')[0];
             
-            // Update top nav counts
-            const upcomingVisits = window.visits.filter(v => v.status === 'pending').length;
-            document.getElementById('upcomingCount').textContent = upcomingVisits;
+            // Count invoices from both pipeline and visits
+            let totalNeedsInvoice = 0;
             
-            const uninvoiced = window.visits.filter(v => v.status === 'completed' && v.invoiceStatus === 'pending').length;
-            const uninvoicedProjects = window.projects.filter(p => p.status === 'completed' && p.invoiceStatus === 'pending').length;
-            document.getElementById('statUninvoiced').textContent = uninvoiced + uninvoicedProjects;
-            document.getElementById('uninvoicedCount').textContent = uninvoiced + uninvoicedProjects;
+            if (window.pipelineJobs) {
+                const pipelineInvoices = window.pipelineJobs.filter(j => j.stage === 'complete' || j.stage === 'invoiced').length;
+                totalNeedsInvoice += pipelineInvoices;
+                
+                // Update pipeline count
+                const pipelineCount = window.pipelineJobs.length;
+                const pipelineBadge = document.getElementById('pipelineCount');
+                if (pipelineBadge) {
+                    pipelineBadge.textContent = pipelineCount;
+                }
+            }
             
-            // Update project count
-            const activeProjects = window.projects.filter(p => p.status !== 'completed').length;
-            document.getElementById('projectsCount').textContent = activeProjects;
+            if (window.visits) {
+                // Count upcoming visits
+                const upcomingVisits = window.visits.filter(v => !v.completed && !v.paused).length;
+                const upcomingBadge = document.getElementById('upcomingCount');
+                if (upcomingBadge) {
+                    upcomingBadge.textContent = upcomingVisits;
+                }
+                
+                // Count completed visits not yet invoiced
+                const visitInvoices = window.visits.filter(v => v.completed && !v.invoiced).length;
+                totalNeedsInvoice += visitInvoices;
+            }
             
-            // Update dashboard content
-            renderSeasonalTips();
-            renderMonthlyUpsells();
-            renderActiveProjects();
-            renderDueToday();
-            renderVisitReminders();
-            renderNextVisits();
+            // Update invoice badge
+            const uninvoicedBadge = document.getElementById('uninvoicedCount');
+            if (uninvoicedBadge) {
+                uninvoicedBadge.textContent = totalNeedsInvoice;
+            }
+            
+            // Update legacy project count if element exists
+            if (window.projects) {
+                const activeProjects = window.projects.filter(p => p.status !== 'completed').length;
+                const projectBadge = document.getElementById('projectsCount');
+                if (projectBadge) {
+                    projectBadge.textContent = activeProjects;
+                }
+            }
+            
+            // Update dashboard content - only if functions exist
+            if (typeof renderSeasonalTips === 'function') renderSeasonalTips();
+            if (typeof renderMonthlyUpsells === 'function') renderMonthlyUpsells();
+            if (typeof renderActiveProjects === 'function') renderActiveProjects();
+            if (typeof renderDueToday === 'function') renderDueToday();
+            if (typeof renderVisitReminders === 'function') renderVisitReminders();
+            if (typeof renderNextVisits === 'function') renderNextVisits();
         }
 
         // ============================================
