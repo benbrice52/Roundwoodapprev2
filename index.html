@@ -22,8 +22,14 @@
             --primary-dark: #1a3009;
             --accent: #8fbc5a;
             --danger: #dc2626;
+            --danger-light: #fee2e2;
+            --danger-dark: #991b1b;
             --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --warning-dark: #92400e;
             --success: #10b981;
+            --success-light: #d1fae5;
+            --success-dark: #065f46;
             --gray-50: #f9fafb;
             --gray-100: #f3f4f6;
             --gray-200: #e5e7eb;
@@ -2627,7 +2633,7 @@
                         ...childSnapshot.val()
                     });
                 });
-                console.log('Loaded sites:', window.window.sites.length);
+                console.log('Loaded sites:', window.sites.length);
                 if (typeof renderSites === 'function') renderSites();
                 if (typeof updateStats === 'function') updateStats();
             });
@@ -2642,7 +2648,7 @@
                         ...childSnapshot.val()
                     });
                 });
-                console.log('Loaded visits:', window.window.visits.length);
+                console.log('Loaded visits:', window.visits.length);
                 if (typeof renderVisits === 'function') renderVisits();
                 if (typeof renderInvoices === 'function') renderInvoices();
                 if (typeof renderHistory === 'function') renderHistory();
@@ -2659,7 +2665,7 @@
                         ...childSnapshot.val()
                     });
                 });
-                console.log('Loaded projects:', window.window.projects.length);
+                console.log('Loaded projects:', window.projects.length);
                 if (typeof renderProjects === 'function') renderProjects();
                 if (typeof updateStats === 'function') updateStats();
             });
@@ -2674,7 +2680,7 @@
                         ...childSnapshot.val()
                     });
                 });
-                console.log('Loaded pipeline jobs:', window.window.pipelineJobs.length);
+                console.log('Loaded pipeline jobs:', window.pipelineJobs.length);
                 if (typeof renderPipeline === 'function') renderPipeline();
             });
             
@@ -3166,6 +3172,364 @@ This notification was generated automatically by Roundwood Route Manager.
             }
         });
 
+        // ========================================
+        // PIPELINE RENDERING
+        // ========================================
+
+        // Render Pipeline Jobs
+        function renderPipeline() {
+            if (!window.pipelineJobs) {
+                console.error('pipelineJobs not initialized');
+                return;
+            }
+
+            console.log('Rendering pipeline with', window.pipelineJobs.length, 'jobs');
+
+            // Stage mapping
+            const stages = {
+                newLead: { container: 'newLeadsContainer', count: 'newLeadsCount', empty: 'No new leads' },
+                quoteSent: { container: 'quotesSentContainer', count: 'quotesSentCount', empty: 'No quotes sent' },
+                approved: { container: 'approvedContainer', count: 'approvedCount', empty: 'No approved quotes' },
+                inProgress: { container: 'inProgressContainer', count: 'inProgressCount', empty: 'No work in progress' },
+                complete: { container: 'completeContainer', count: 'completeCount', empty: 'No completed work awaiting invoice' },
+                invoiced: { container: 'invoicedContainer', count: 'invoicedCount', empty: 'No invoices awaiting payment' },
+                paid: { container: 'paidContainer', count: 'paidCount', empty: 'No completed & paid jobs yet' }
+            };
+
+            // Group jobs by stage
+            const jobsByStage = {};
+            Object.keys(stages).forEach(stage => {
+                jobsByStage[stage] = window.pipelineJobs.filter(job => job.stage === stage);
+            });
+
+            // Render each stage
+            Object.entries(stages).forEach(([stage, config]) => {
+                const container = document.getElementById(config.container);
+                const countBadge = document.getElementById(config.count);
+                
+                if (!container) return;
+
+                const jobs = jobsByStage[stage];
+                
+                // Update count
+                if (countBadge) {
+                    countBadge.textContent = jobs.length;
+                }
+
+                // Render jobs or empty state
+                if (jobs.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">📋</div>
+                            <div class="empty-state-text">${config.empty}</div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = jobs.map(job => createPipelineJobCard(job, stage)).join('');
+                }
+            });
+
+            // Update pipeline badge in nav
+            const pipelineBadge = document.getElementById('pipelineCount');
+            if (pipelineBadge) {
+                pipelineBadge.textContent = window.pipelineJobs.length;
+            }
+        }
+
+        // Create pipeline job card HTML
+        function createPipelineJobCard(job, stage) {
+            const value = job.estimatedValue ? `£${job.estimatedValue.toLocaleString()}` : 'No value set';
+            
+            // Stage-specific actions
+            let actions = '';
+            let reviewSection = '';
+            
+            if (stage === 'newLead') {
+                actions = `<button class="btn btn-small btn-primary" onclick="openSendQuoteModal('${job.id}')">Send Quote</button>`;
+            } else if (stage === 'quoteSent') {
+                actions = `<button class="btn btn-small btn-success" onclick="markAsApproved('${job.id}')">Mark as Approved</button>`;
+            } else if (stage === 'approved') {
+                actions = `<button class="btn btn-small btn-primary" onclick="startWork('${job.id}')">Start Work</button>`;
+            } else if (stage === 'inProgress') {
+                actions = `<button class="btn btn-small btn-success" onclick="markAsComplete('${job.id}')">Mark Complete</button>`;
+            } else if (stage === 'complete') {
+                actions = `<button class="btn btn-small btn-primary" onclick="sendInvoice('${job.id}')">Send Invoice</button>`;
+            } else if (stage === 'invoiced') {
+                actions = `<button class="btn btn-small btn-success" onclick="markAsPaid('${job.id}')">Mark as Paid</button>`;
+            } else if (stage === 'paid') {
+                // For paid jobs, show review request status
+                if (job.reviewRequested) {
+                    reviewSection = `
+                        <div style="background: var(--success-light); border: 1px solid var(--success); border-radius: 6px; padding: 0.75rem; margin-top: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--success-dark);">
+                                <span>✅</span>
+                                <span style="font-weight: 500;">Review requested on ${new Date(job.reviewRequestedDate).toLocaleDateString('en-GB')}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    reviewSection = `
+                        <div style="background: var(--warning-light); border: 1px solid var(--warning); border-radius: 6px; padding: 0.75rem; margin-top: 0.75rem;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--warning-dark);">
+                                    <span>⭐</span>
+                                    <span style="font-weight: 500;">Review not requested yet</span>
+                                </div>
+                                <button class="btn btn-small btn-primary" onclick="requestReviewForJob('${job.id}')">Request Review</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            return `
+                <div class="pipeline-job-card" style="background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 1rem; color: var(--gray-900);">${job.customerName}</div>
+                            <div style="color: var(--gray-500); font-size: 0.85rem;">Job #${job.jobReference}</div>
+                        </div>
+                        <div style="font-weight: 600; color: var(--primary);">${value}</div>
+                    </div>
+                    <div style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 0.5rem;">${job.projectType}</div>
+                    <div style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 1rem;">${job.jobDescription}</div>
+                    ${job.customerPhone ? `<div style="color: var(--gray-500); font-size: 0.85rem; margin-bottom: 0.25rem;">📞 ${job.customerPhone}</div>` : ''}
+                    ${job.customerEmail ? `<div style="color: var(--gray-500); font-size: 0.85rem; margin-bottom: 0.75rem;">📧 ${job.customerEmail}</div>` : ''}
+                    <div style="display: flex; gap: 0.5rem;">
+                        ${actions}
+                    </div>
+                    ${reviewSection}
+                </div>
+            `;
+        }
+
+        // Make renderPipeline available globally
+        window.renderPipeline = renderPipeline;
+
+        // ========================================
+        // VISITS RENDERING
+        // ========================================
+
+        // Render Upcoming Visits Tab
+        function renderVisits() {
+            const container = document.getElementById('visitsContainer');
+            if (!container) {
+                console.error('visitsContainer not found');
+                return;
+            }
+
+            if (!window.visits || window.visits.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 3rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
+                        <div class="empty-state-text">No upcoming visits</div>
+                        <p style="color: var(--gray-500); margin-top: 0.5rem;">All visits are completed or there are no sites yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Get today's date at midnight for comparison
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Filter for upcoming visits (not completed)
+            const upcomingVisits = window.visits.filter(visit => {
+                if (visit.completed) return false;
+                if (visit.paused) return true; // Show paused visits
+                
+                const visitDate = new Date(visit.date);
+                visitDate.setHours(0, 0, 0, 0);
+                return visitDate >= today; // Show today and future
+            });
+
+            if (upcomingVisits.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 3rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+                        <div class="empty-state-text">All visits completed!</div>
+                        <p style="color: var(--gray-500); margin-top: 0.5rem;">No upcoming visits scheduled</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by date
+            upcomingVisits.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Render visits
+            container.innerHTML = `
+                <div style="padding: 1.5rem;">
+                    ${upcomingVisits.map(visit => createVisitCard(visit)).join('')}
+                </div>
+            `;
+        }
+
+        // Create visit card HTML
+        function createVisitCard(visit) {
+            const visitDate = new Date(visit.date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            visitDate.setHours(0, 0, 0, 0);
+            const daysUntil = Math.floor((visitDate - today) / (1000 * 60 * 60 * 24));
+
+            let urgencyClass = '';
+            let urgencyText = '';
+            
+            if (visit.paused) {
+                urgencyClass = 'info';
+                urgencyText = 'PAUSED';
+            } else if (daysUntil < 0) {
+                urgencyClass = 'danger';
+                urgencyText = 'OVERDUE';
+            } else if (daysUntil === 0) {
+                urgencyClass = 'danger';
+                urgencyText = 'TODAY';
+            } else if (daysUntil <= 3) {
+                urgencyClass = 'warning';
+                urgencyText = `${daysUntil} DAYS`;
+            } else if (daysUntil <= 7) {
+                urgencyClass = 'success';
+                urgencyText = `${daysUntil} DAYS`;
+            } else {
+                urgencyClass = 'secondary';
+                urgencyText = `${daysUntil} DAYS`;
+            }
+
+            return `
+                <div class="visit-card" style="background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--gray-900);">${visit.siteName}</h3>
+                            <div style="color: var(--gray-600); font-size: 0.9rem;">${visit.address}</div>
+                        </div>
+                        <span class="badge badge-${urgencyClass}">${urgencyText}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Date</div>
+                            <div style="font-weight: 500;">${visitDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Service</div>
+                            <div style="font-weight: 500;">${visit.serviceType || 'Maintenance'}</div>
+                        </div>
+                        ${visit.notes ? `
+                        <div style="grid-column: 1 / -1;">
+                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Notes</div>
+                            <div style="color: var(--gray-700);">${visit.notes}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        ${!visit.paused ? `
+                            <button class="btn btn-success btn-small" onclick="completeVisit('${visit.id}')">✓ Mark Complete</button>
+                            <button class="btn btn-secondary btn-small" onclick="editVisit('${visit.id}')">Edit</button>
+                        ` : `
+                            <button class="btn btn-primary btn-small" onclick="resumeVisit('${visit.id}')">Resume</button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Make renderVisits available globally
+        window.renderVisits = renderVisits;
+
+        // ========================================
+        // INVOICES RENDERING
+        // ========================================
+
+        // Render Invoice Tracking Tab
+        function renderInvoices() {
+            const container = document.getElementById('invoicesContainer');
+            if (!container) {
+                console.error('invoicesContainer not found');
+                return;
+            }
+
+            if (!window.visits || window.visits.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 3rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
+                        <div class="empty-state-text">No invoices to track</div>
+                        <p style="color: var(--gray-500); margin-top: 0.5rem;">Complete visits will appear here for invoicing</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Filter for completed but not invoiced visits
+            const needsInvoice = window.visits.filter(visit => 
+                visit.completed && !visit.invoiced
+            );
+
+            if (needsInvoice.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 3rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+                        <div class="empty-state-text">All caught up!</div>
+                        <p style="color: var(--gray-500); margin-top: 0.5rem;">No completed visits awaiting invoices</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by completion date (most recent first)
+            needsInvoice.sort((a, b) => new Date(b.completedDate || b.date) - new Date(a.completedDate || a.date));
+
+            container.innerHTML = `
+                <div style="padding: 1.5rem;">
+                    <div class="alert alert-warning" style="margin-bottom: 1.5rem;">
+                        <strong>💡 Tip:</strong> Invoice completed work promptly to maintain healthy cash flow!
+                    </div>
+                    ${needsInvoice.map(visit => createInvoiceCard(visit)).join('')}
+                </div>
+            `;
+        }
+
+        // Create invoice card HTML
+        function createInvoiceCard(visit) {
+            const completedDate = new Date(visit.completedDate || visit.date);
+            const daysSince = Math.floor((new Date() - completedDate) / (1000 * 60 * 60 * 24));
+            
+            let urgencyClass = daysSince > 7 ? 'danger' : daysSince > 3 ? 'warning' : 'success';
+
+            return `
+                <div class="invoice-card" style="background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--gray-900);">${visit.siteName}</h3>
+                            <div style="color: var(--gray-600); font-size: 0.9rem;">${visit.address}</div>
+                        </div>
+                        <span class="badge badge-${urgencyClass}">${daysSince} days ago</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Completed</div>
+                            <div style="font-weight: 500;">${completedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Service</div>
+                            <div style="font-weight: 500;">${visit.serviceType || 'Maintenance'}</div>
+                        </div>
+                        ${visit.completionNotes ? `
+                        <div style="grid-column: 1 / -1;">
+                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Work Done</div>
+                            <div style="color: var(--gray-700);">${visit.completionNotes}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary btn-small" onclick="markAsInvoiced('${visit.id}')">📄 Mark as Invoiced</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Make renderInvoices available globally
+        window.renderInvoices = renderInvoices;
+
         // Render Sites
         function renderSites() {
             const container = document.getElementById('sitesContainer');
@@ -3175,9 +3539,9 @@ This notification was generated automatically by Roundwood Route Manager.
                 return;
             }
             
-            console.log('renderSites called with', window.window.sites.length, 'sites');
+            console.log('renderSites called with', window.sites.length, 'sites');
             
-            if (window.window.sites.length === 0) {
+            if (window.sites.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📍</div>
@@ -3190,7 +3554,7 @@ This notification was generated automatically by Roundwood Route Manager.
             }
 
             try {
-                const html = window.window.sites.map(site => {
+                const html = window.sites.map(site => {
                     const frequencyText = {
                     7: 'Weekly',
                     14: 'Fortnightly',
@@ -5035,7 +5399,7 @@ Thank you for choosing Roundwood Solutions for your grounds maintenance at ${sit
 We'd really appreciate it if you could take 2 minutes to leave us a review on Google. Your feedback helps us improve and helps other businesses find quality grounds maintenance services.
 
 Leave a review here:
-https://g.page/r/CUIoA0XVVFhTEAI/review
+https://g.page/r/CW43cOg5aYctEBE/review
 
 Thank you for your time and trust in our services.
 
@@ -5069,7 +5433,7 @@ Roundwood Solutions Limited
         });
 
         // Send Review Request Form
-        document.getElementById('sendReviewForm').addEventListener('submit', (e) => {
+        document.getElementById('sendReviewForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const customerName = document.getElementById('reviewCustomerName').value;
@@ -5090,14 +5454,36 @@ Roundwood Solutions Limited
                 sentBy: window.currentUser.email
             };
             
-            const reviewRef = window.dbPush(window.dbRef(window.database, `users/${userId}/reviewRequests`));
-            window.dbSet(reviewRef, reviewData).then(() => {
+            try {
+                // Save review request
+                const reviewRef = window.dbPush(window.dbRef(window.database, `users/${userId}/reviewRequests`));
+                await window.dbSet(reviewRef, reviewData);
+                
+                // Find and update matching pipeline job (paid jobs with same customer email)
+                if (customerEmail && window.pipelineJobs) {
+                    const matchingJob = window.pipelineJobs.find(job => 
+                        job.stage === 'paid' && 
+                        job.customerEmail && 
+                        job.customerEmail.toLowerCase() === customerEmail.toLowerCase()
+                    );
+                    
+                    if (matchingJob) {
+                        const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${matchingJob.id}`);
+                        await window.dbUpdate(jobRef, {
+                            reviewRequested: true,
+                            reviewRequestedDate: new Date().toISOString()
+                        });
+                        console.log('Updated pipeline job with review request flag');
+                    }
+                }
+                
                 document.getElementById('sendReviewForm').reset();
                 alert('✅ Review request email opened!\n\nSend the email from your email client to complete.');
                 loadReviewHistory();
-            }).catch(error => {
+            } catch (error) {
                 console.error('Error saving review request:', error);
-            });
+                alert('Error saving review request. Please try again.');
+            }
         });
 
         // Load Review History
@@ -5344,6 +5730,43 @@ Roundwood Solutions Limited
             document.getElementById('addPipelineJobForm')?.reset();
         };
 
+        // Request review for a paid job
+        window.requestReviewForJob = async function(jobId) {
+            const job = window.pipelineJobs.find(j => j.id === jobId);
+            if (!job) {
+                alert('Job not found');
+                return;
+            }
+
+            // Navigate to Reviews tab
+            showTab('reviews');
+
+            // Pre-fill the review request form
+            setTimeout(() => {
+                // Determine which business
+                const businessSelect = document.getElementById('reviewBusiness');
+                if (businessSelect) {
+                    // Default to roundwood, could be made smarter based on project type
+                    businessSelect.value = 'roundwood';
+                }
+
+                // Fill customer details
+                if (job.customerName) {
+                    document.getElementById('reviewCustomerName').value = job.customerName;
+                }
+                if (job.customerEmail) {
+                    document.getElementById('reviewCustomerEmail').value = job.customerEmail;
+                }
+                
+                // Use job description as site name if available
+                const siteName = job.jobDescription || `Job #${job.jobReference}`;
+                document.getElementById('reviewSiteName').value = siteName;
+
+                // Scroll to form
+                document.getElementById('reviewCustomerName')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        };
+
         window.openSendQuoteModal = function(jobId) {
             currentPipelineJobId = jobId;
             const job = window.pipelineJobs.find(j => j.id === jobId);
@@ -5482,6 +5905,104 @@ Roundwood Solutions Limited
         }
 
         // ========================================
+        // PIPELINE ACTION FUNCTIONS
+        // ========================================
+        
+        window.markAsApproved = async function(jobId) {
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'approved', approvedDate: new Date().toISOString() });
+                alert('✅ Job marked as approved!');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating job');
+            }
+        };
+        
+        window.startWork = async function(jobId) {
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'inProgress', startedDate: new Date().toISOString() });
+                alert('✅ Work started!');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating job');
+            }
+        };
+        
+        window.markAsComplete = async function(jobId) {
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'complete', completedDate: new Date().toISOString() });
+                alert('✅ Job complete! Ready to invoice.');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating job');
+            }
+        };
+        
+        window.sendInvoice = async function(jobId) {
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'invoiced', invoicedDate: new Date().toISOString() });
+                alert('✅ Invoiced! Awaiting payment.');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating job');
+            }
+        };
+        
+        window.markAsPaid = async function(jobId) {
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'paid', paidDate: new Date().toISOString() });
+                alert('✅ Payment received! 🎉');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating job');
+            }
+        };
+        
+        window.completeVisit = async function(visitId) {
+            const notes = prompt('Completion notes (optional):');
+            try {
+                const userId = window.currentUser.uid;
+                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                await window.dbUpdate(visitRef, { completed: true, completedDate: new Date().toISOString(), completionNotes: notes || '' });
+                alert('✅ Visit complete!');
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof renderInvoices === 'function') renderInvoices();
+                if (typeof updateStats === 'function') updateStats();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating visit');
+            }
+        };
+        
+        window.resumeVisit = async function(visitId) {
+            try {
+                const userId = window.currentUser.uid;
+                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                await window.dbUpdate(visitRef, { paused: false, resumedDate: new Date().toISOString() });
+                alert('✅ Visit resumed!');
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof updateStats === 'function') updateStats();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating visit');
+            }
+        };
+        
+        window.editVisit = function(visitId) {
+            alert('Edit functionality coming soon!');
+        };
+
+        // ========================================
         // PIPELINE FORM SUBMISSION HANDLERS
         // ========================================
 
@@ -5510,6 +6031,12 @@ Roundwood Solutions Limited
                     
                     await window.dbSet(jobRef, jobData);
                     closeAddPipelineJobModal();
+                    
+                    // Refresh pipeline display
+                    if (typeof renderPipeline === 'function') {
+                        renderPipeline();
+                    }
+                    
                     alert('✅ Lead added successfully! Job Ref: ' + nextRef);
                 } catch (error) {
                     console.error('Error adding pipeline job:', error);
