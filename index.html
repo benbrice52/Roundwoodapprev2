@@ -1246,22 +1246,6 @@
         <div class="tab-content">
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-pane active">
-                <!-- Awaiting Invoice (Full Width) -->
-                <div class="collapsible-section" style="margin-bottom: 1rem;">
-                    <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b;">
-                        <div class="collapsible-title">
-                            <span>💰 Awaiting Invoice</span>
-                            <span class="collapsible-badge" id="statUninvoiced">0</span>
-                        </div>
-                        <span class="collapsible-arrow">▼</span>
-                    </div>
-                    <div class="collapsible-content">
-                        <div class="collapsible-inner">
-                            <p class="section-description" style="color: #7f1d1d;">Click Invoice Tracking tab to view and manage uninvoiced work</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Due Today (Collapsible) -->
                 <div id="dueTodayCard" style="display: none;">
                     <div class="collapsible-section open">
@@ -2200,6 +2184,40 @@
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-secondary" onclick="closeCompleteVisitModal()" style="flex: 1;">Cancel</button>
                     <button type="submit" class="btn btn-success" style="flex: 1;">✓ Complete & Generate Worksheet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Visit Modal -->
+    <div id="editVisitModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">✏️ Edit Visit</h2>
+                <button class="btn-close" onclick="closeEditVisitModal()">×</button>
+            </div>
+            
+            <form id="editVisitForm">
+                <input type="hidden" id="editVisitId">
+                
+                <div class="form-group">
+                    <label for="editScheduledDate">Scheduled Date *</label>
+                    <input type="date" id="editScheduledDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editPrice">Price (£) *</label>
+                    <input type="number" id="editPrice" step="0.01" min="0" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editNotes">Notes</label>
+                    <textarea id="editNotes" rows="3" placeholder="Any special notes for this visit..."></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditVisitModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">💾 Save Changes</button>
                 </div>
             </form>
         </div>
@@ -3234,16 +3252,32 @@ This notification was generated automatically by Roundwood Route Manager.
             if (stage === 'newLead') {
                 actions = `<button class="btn btn-small btn-primary" onclick="markAsQuoteSent('${job.id}')">Mark as Quote Sent</button>`;
             } else if (stage === 'quoteSent') {
-                actions = `<button class="btn btn-small btn-success" onclick="markAsApproved('${job.id}')">Mark as Approved</button>`;
+                actions = `
+                    <button class="btn btn-small btn-success" onclick="markAsApproved('${job.id}')">Mark as Approved</button>
+                    <button class="btn btn-small btn-secondary" onclick="moveBackToNewLead('${job.id}')">← Move Back to New Leads</button>
+                `;
             } else if (stage === 'approved') {
-                actions = `<button class="btn btn-small btn-primary" onclick="startWork('${job.id}')">Start Work</button>`;
+                actions = `
+                    <button class="btn btn-small btn-primary" onclick="scheduleWork('${job.id}')">Schedule Work</button>
+                    <button class="btn btn-small btn-secondary" onclick="moveBackToQuoteSent('${job.id}')">← Move Back to Quote Sent</button>
+                `;
             } else if (stage === 'inProgress') {
-                actions = `<button class="btn btn-small btn-success" onclick="markAsComplete('${job.id}')">Mark Complete</button>`;
+                actions = `
+                    <button class="btn btn-small btn-success" onclick="markAsComplete('${job.id}')">Mark Complete</button>
+                    <button class="btn btn-small btn-secondary" onclick="moveBackToApproved('${job.id}')">← Move Back to Approved</button>
+                `;
             } else if (stage === 'complete') {
-                actions = `<button class="btn btn-small btn-primary" onclick="sendInvoice('${job.id}')">Send Invoice</button>`;
+                actions = `
+                    <button class="btn btn-small btn-primary" onclick="sendInvoice('${job.id}')">Send Invoice</button>
+                    <button class="btn btn-small btn-secondary" onclick="moveBackToInProgress('${job.id}')">← Move Back to In Progress</button>
+                `;
             } else if (stage === 'invoiced') {
-                actions = `<button class="btn btn-small btn-success" onclick="markAsPaid('${job.id}')">Mark as Paid</button>`;
+                actions = `
+                    <button class="btn btn-small btn-success" onclick="markAsPaid('${job.id}')">Mark as Paid</button>
+                    <button class="btn btn-small btn-secondary" onclick="moveBackToComplete('${job.id}')">← Move Back to Complete</button>
+                `;
             } else if (stage === 'paid') {
+                actions = `<button class="btn btn-small btn-secondary" onclick="moveBackToInvoiced('${job.id}')">← Move Back to Invoiced</button>`;
                 // For paid jobs, show review request status
                 if (job.reviewRequested) {
                     reviewSection = `
@@ -3407,6 +3441,12 @@ This notification was generated automatically by Roundwood Route Manager.
             }
 
             const price = visit.price ? `£${parseFloat(visit.price).toFixed(2)}` : '£0.00';
+            
+            // Determine visit type
+            const isProject = visit.pipelineJobId ? true : false;
+            const visitTypeBadge = isProject 
+                ? '<span style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">🎯 PROJECT</span>'
+                : '<span style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">🔧 MAINTENANCE</span>';
 
             return `
                 <div class="visit-card" style="
@@ -3426,6 +3466,7 @@ This notification was generated automatically by Roundwood Route Manager.
                     <!-- Site name -->
                     <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 600; color: var(--gray-900); padding-right: 6rem;">
                         ${visit.siteName}
+                        ${visitTypeBadge}
                     </h3>
                     
                     <!-- Date -->
@@ -3459,11 +3500,19 @@ This notification was generated automatically by Roundwood Route Manager.
                     </div>
                     ` : ''}
                     
-                    <!-- Button -->
+                    <!-- Buttons -->
                     ${!visit.paused ? `
-                        <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="width: 100%; padding: 0.875rem; font-size: 1rem; font-weight: 500;">
+                        <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="width: 100%; padding: 0.875rem; font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem;">
                             ✓ Complete Visit
                         </button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-secondary" onclick="openEditVisitModal('${visit.id}')" style="flex: 1; padding: 0.75rem; font-size: 0.9rem;">
+                                ✏️ Edit
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteVisit('${visit.id}')" style="flex: 1; padding: 0.75rem; font-size: 0.9rem;">
+                                🗑️ Delete
+                            </button>
+                        </div>
                     ` : `
                         <button class="btn btn-primary" onclick="resumeVisit('${visit.id}')" style="width: 100%; padding: 0.875rem; font-size: 1rem; font-weight: 500;">
                             ▶ Resume Visit
@@ -6078,15 +6127,66 @@ Roundwood Solutions Limited
             }
         };
         
-        window.startWork = async function(jobId) {
+        window.scheduleWork = async function(jobId) {
             try {
+                // Get the job details
+                const job = window.pipelineJobs.find(j => j.id === jobId);
+                if (!job) {
+                    alert('Job not found');
+                    return;
+                }
+                
+                // Prompt for scheduled date
+                const today = new Date().toISOString().split('T')[0];
+                const scheduledDate = prompt('Enter scheduled date (YYYY-MM-DD):', today);
+                if (!scheduledDate) return; // User cancelled
+                
+                // Validate date format
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) {
+                    alert('Invalid date format. Please use YYYY-MM-DD');
+                    return;
+                }
+                
                 const userId = window.currentUser.uid;
+                
+                // Create visit from pipeline job
+                const visitData = {
+                    pipelineJobId: jobId,  // Link back to pipeline job
+                    siteName: job.customerName,
+                    siteAddress: job.customerAddress || job.customerEmail || '',
+                    scheduledDate: scheduledDate,
+                    price: job.estimatedValue || 0,
+                    status: 'pending',
+                    projectType: job.projectType || '',
+                    jobDescription: job.jobDescription || '',
+                    customerPhone: job.customerPhone || '',
+                    customerEmail: job.customerEmail || '',
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Add visit to database
+                const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                const visitId = visitRef.key;
+                await window.dbSet(visitRef, visitData);
+                
+                // Update pipeline job to in-progress and link to visit
                 const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
-                await window.dbUpdate(jobRef, { stage: 'inProgress', startedDate: new Date().toISOString() });
-                alert('✅ Work started!');
+                await window.dbUpdate(jobRef, { 
+                    stage: 'inProgress', 
+                    startedDate: new Date().toISOString(),
+                    visitId: visitId  // Link to created visit
+                });
+                
+                alert(`✅ Work scheduled for ${new Date(scheduledDate).toLocaleDateString('en-GB')}!\nVisit added to Upcoming Visits tab.`);
+                
+                // Refresh views
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof renderPipeline === 'function') renderPipeline();
+                if (typeof updateStats === 'function') updateStats();
+                
             } catch (error) {
-                console.error('Error:', error);
-                alert('Error updating job');
+                console.error('Error scheduling work:', error);
+                alert('Error scheduling work. Please try again.');
             }
         };
         
@@ -6126,6 +6226,88 @@ Roundwood Solutions Limited
             }
         };
         
+        // ========================================
+        // PIPELINE MOVE BACK FUNCTIONS
+        // ========================================
+        
+        window.moveBackToNewLead = async function(jobId) {
+            if (!confirm('Move this job back to New Leads?')) return;
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'newLead' });
+                alert('✅ Job moved back to New Leads');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error moving job');
+            }
+        };
+        
+        window.moveBackToQuoteSent = async function(jobId) {
+            if (!confirm('Move this job back to Quote Sent?')) return;
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'quoteSent' });
+                alert('✅ Job moved back to Quote Sent');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error moving job');
+            }
+        };
+        
+        window.moveBackToApproved = async function(jobId) {
+            if (!confirm('Move this job back to Approved?')) return;
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'approved' });
+                alert('✅ Job moved back to Approved');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error moving job');
+            }
+        };
+        
+        window.moveBackToInProgress = async function(jobId) {
+            if (!confirm('Move this job back to In Progress?')) return;
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'inProgress' });
+                alert('✅ Job moved back to In Progress');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error moving job');
+            }
+        };
+        
+        window.moveBackToComplete = async function(jobId) {
+            if (!confirm('Move this job back to Complete?')) return;
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'complete' });
+                alert('✅ Job moved back to Complete');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error moving job');
+            }
+        };
+        
+        window.moveBackToInvoiced = async function(jobId) {
+            if (!confirm('Move this job back to Invoiced?')) return;
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { stage: 'invoiced' });
+                alert('✅ Job moved back to Invoiced');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error moving job');
+            }
+        };
+        
         // Note: Visit completion now uses openCompleteVisitModal() which shows full form with signature
         
         window.markVisitAsInvoiced = async function(visitId) {
@@ -6159,8 +6341,91 @@ Roundwood Solutions Limited
             }
         };
         
-        window.editVisit = function(visitId) {
-            alert('Edit functionality coming soon!');
+        // ========================================
+        // VISIT EDIT & DELETE FUNCTIONS
+        // ========================================
+        
+        window.openEditVisitModal = function(visitId) {
+            const visit = window.visits.find(v => v.id === visitId);
+            if (!visit) {
+                alert('Visit not found');
+                return;
+            }
+            
+            // Populate form
+            document.getElementById('editVisitId').value = visitId;
+            document.getElementById('editScheduledDate').value = visit.scheduledDate;
+            document.getElementById('editPrice').value = visit.price;
+            document.getElementById('editNotes').value = visit.notes || '';
+            
+            // Open modal
+            document.getElementById('editVisitModal').classList.add('active');
+        };
+        
+        window.closeEditVisitModal = function() {
+            document.getElementById('editVisitModal').classList.remove('active');
+            document.getElementById('editVisitForm').reset();
+        };
+        
+        // Edit Visit Form Handler
+        document.getElementById('editVisitForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const visitId = document.getElementById('editVisitId').value;
+            const scheduledDate = document.getElementById('editScheduledDate').value;
+            const price = parseFloat(document.getElementById('editPrice').value);
+            const notes = document.getElementById('editNotes').value;
+            
+            try {
+                const userId = window.currentUser.uid;
+                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                
+                await window.dbUpdate(visitRef, {
+                    scheduledDate: scheduledDate,
+                    price: price,
+                    notes: notes,
+                    updatedAt: new Date().toISOString()
+                });
+                
+                closeEditVisitModal();
+                alert('✅ Visit updated successfully!');
+                
+                // Refresh views
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof updateStats === 'function') updateStats();
+                
+            } catch (error) {
+                console.error('Error updating visit:', error);
+                alert('Error updating visit. Please try again.');
+            }
+        });
+        
+        window.deleteVisit = async function(visitId) {
+            const visit = window.visits.find(v => v.id === visitId);
+            if (!visit) {
+                alert('Visit not found');
+                return;
+            }
+            
+            if (!confirm(`Delete visit for "${visit.siteName}"?\n\nScheduled: ${new Date(visit.scheduledDate).toLocaleDateString('en-GB')}\n\nThis action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const userId = window.currentUser.uid;
+                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                await window.dbRemove(visitRef);
+                
+                alert('✅ Visit deleted successfully');
+                
+                // Refresh views
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof updateStats === 'function') updateStats();
+                
+            } catch (error) {
+                console.error('Error deleting visit:', error);
+                alert('Error deleting visit. Please try again.');
+            }
         };
 
         // ========================================
