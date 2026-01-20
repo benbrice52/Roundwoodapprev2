@@ -1078,6 +1078,172 @@
             margin-bottom: 0.5rem;
             color: var(--gray-800);
         }
+
+        /* Calendar Styles */
+        .calendar-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-top: 2rem;
+            overflow: hidden;
+        }
+
+        .calendar-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .calendar-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .calendar-nav button {
+            background: white;
+            border: 1px solid var(--gray-300);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .calendar-nav button:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-400);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: var(--gray-200);
+            border: 1px solid var(--gray-200);
+        }
+
+        .calendar-day-header {
+            background: var(--gray-100);
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            color: var(--gray-700);
+            font-size: 0.875rem;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 100px;
+            padding: 0.5rem;
+            position: relative;
+        }
+
+        .calendar-day.other-month {
+            background: var(--gray-50);
+            opacity: 0.5;
+        }
+
+        .calendar-day.today {
+            background: #fef3c7;
+        }
+
+        .calendar-day-number {
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .calendar-day.other-month .calendar-day-number {
+            color: var(--gray-400);
+        }
+
+        .shift-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .shift-badge.night {
+            background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+        }
+
+        .calendar-event {
+            background: #d1fae5;
+            border-left: 3px solid #10b981;
+            padding: 0.2rem 0.4rem;
+            margin-bottom: 0.2rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .calendar-event:hover {
+            transform: translateX(2px);
+        }
+
+        .calendar-event.project {
+            background: #e0e7ff;
+            border-left-color: #6366f1;
+        }
+
+        .calendar-event.holiday {
+            background: #fce7f3;
+            border-left-color: #ec4899;
+        }
+
+        .calendar-event.overdue {
+            background: #fee2e2;
+            border-left-color: #ef4444;
+        }
+
+        .calendar-legend {
+            display: flex;
+            gap: 1.5rem;
+            padding: 1rem 1.5rem;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-200);
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+        }
+
+        .calendar-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .calendar-legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
     </style>
 </head>
 <body>
@@ -1316,6 +1482,60 @@
                         <div class="collapsible-inner">
                             <p class="section-description" style="color: var(--gray-600);">Upcoming visits and projects in the next week:</p>
                             <div id="nextVisits"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calendar View (Collapsible) -->
+                <div class="collapsible-section open">
+                    <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); color: #0c4a6e;">
+                        <div class="collapsible-title">
+                            <span>📅 Calendar View</span>
+                        </div>
+                        <span class="collapsible-arrow">▼</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <div class="collapsible-inner" style="padding: 0;">
+                            <div class="calendar-section" style="margin: 0;">
+                                <div class="calendar-header-bar">
+                                    <div class="calendar-title" id="calendarMonthTitle">January 2026</div>
+                                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                        <button onclick="openAddEventModal()" style="background: var(--primary); color: white; border: none; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">+ Add Event</button>
+                                        <div class="calendar-nav">
+                                            <button onclick="navigateCalendar('prev')">← Prev</button>
+                                            <button onclick="navigateCalendar('today')">Today</button>
+                                            <button onclick="navigateCalendar('next')">Next →</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="calendarContainer"></div>
+                                <div class="calendar-legend">
+                                    <div class="calendar-legend-item">
+                                        <div class="calendar-legend-color" style="background: #d1fae5; border-left: 3px solid #10b981;"></div>
+                                        <span>🔧 Maintenance</span>
+                                    </div>
+                                    <div class="calendar-legend-item">
+                                        <div class="calendar-legend-color" style="background: #e0e7ff; border-left: 3px solid #6366f1;"></div>
+                                        <span>🎯 Project</span>
+                                    </div>
+                                    <div class="calendar-legend-item">
+                                        <div class="calendar-legend-color" style="background: #fce7f3; border-left: 3px solid #ec4899;"></div>
+                                        <span>🏖️ Holiday</span>
+                                    </div>
+                                    <div class="calendar-legend-item">
+                                        <div class="calendar-legend-color" style="background: #fee2e2; border-left: 3px solid #ef4444;"></div>
+                                        <span>⚠️ Overdue</span>
+                                    </div>
+                                    <div class="calendar-legend-item">
+                                        <div class="calendar-legend-color" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.65rem;">D</div>
+                                        <span>Day Shift</span>
+                                    </div>
+                                    <div class="calendar-legend-item">
+                                        <div class="calendar-legend-color" style="background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.65rem;">N</div>
+                                        <span>Night Shift</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2433,6 +2653,48 @@
         </div>
     </div>
 
+    <!-- Add Event/Holiday Modal -->
+    <div id="addEventModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">📅 Add Event / Holiday</h2>
+                <button class="btn-close" onclick="closeAddEventModal()">×</button>
+            </div>
+            
+            <form id="addEventForm">
+                <div class="form-group">
+                    <label for="eventTitle">Event Title *</label>
+                    <input type="text" id="eventTitle" required placeholder="e.g. Ben's Holiday, Christmas Day, Training">
+                </div>
+                
+                <div class="form-group">
+                    <label for="eventDate">Date *</label>
+                    <input type="date" id="eventDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="eventType">Event Type *</label>
+                    <select id="eventType" required>
+                        <option value="holiday">🏖️ Holiday / Time Off</option>
+                        <option value="bankholiday">🎄 Bank Holiday</option>
+                        <option value="office">🏢 Office Event</option>
+                        <option value="reminder">ℹ️ Reminder</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="eventNotes">Notes (Optional)</label>
+                    <textarea id="eventNotes" rows="2" placeholder="Additional details..."></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddEventModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Add Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -2729,6 +2991,21 @@
                 if (typeof renderPipeline === 'function') renderPipeline();
                 if (typeof renderInvoices === 'function') renderInvoices();
                 if (typeof updateStats === 'function') updateStats();
+                if (typeof renderCalendar === 'function') renderCalendar();
+            });
+            
+            // Listen to calendar events/holidays
+            const eventsRef = window.dbRef(window.database, `users/${userId}/calendarEvents`);
+            window.dbOnValue(eventsRef, (snapshot) => {
+                window.calendarEvents = [];
+                snapshot.forEach((childSnapshot) => {
+                    window.calendarEvents.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                console.log('Loaded calendar events:', window.calendarEvents.length);
+                if (typeof renderCalendar === 'function') renderCalendar();
             });
             
             // Load review history and saved calculations
@@ -3110,6 +3387,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 console.log('Loaded sites:', window.sites.length);
                 renderSites();
                 updateStats();
+                if (typeof renderCalendar === 'function') renderCalendar();
             });
 
             // Listen to visits
@@ -3127,6 +3405,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 renderInvoices();
                 renderHistory();
                 updateStats();
+                if (typeof renderCalendar === 'function') renderCalendar();
             });
 
             // Listen to projects
@@ -5841,7 +6120,242 @@ Roundwood Solutions Limited
             if (typeof renderDueToday === 'function') renderDueToday();
             if (typeof renderVisitReminders === 'function') renderVisitReminders();
             if (typeof renderNextVisits === 'function') renderNextVisits();
+            if (typeof renderCalendar === 'function') renderCalendar();
         }
+
+        // ============================================
+        // CALENDAR FUNCTIONS
+        // ============================================
+
+        let currentCalendarDate = new Date();
+
+        // Calculate shift pattern (2 days, 2 nights, 4 off starting Jan 21, 2026)
+        function getShiftForDate(date) {
+            const startDate = new Date(2026, 0, 21); // Jan 21, 2026
+            const daysSinceStart = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+            
+            if (daysSinceStart < 0) return null; // Before shift pattern starts
+            
+            const cycleDay = daysSinceStart % 8; // 8-day cycle: 2D, 2N, 4Off
+            
+            if (cycleDay === 0 || cycleDay === 1) return 'D'; // Days 0-1: Day shift
+            if (cycleDay === 2 || cycleDay === 3) return 'N'; // Days 2-3: Night shift
+            return null; // Days 4-7: Off
+        }
+
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            
+            // Update title
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('calendarMonthTitle').textContent = `${monthNames[month]} ${year}`;
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            
+            // Get first day of week (0 = Sunday, adjust to Monday = 0)
+            let startingDayOfWeek = firstDay.getDay();
+            startingDayOfWeek = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1; // Convert to Monday = 0
+            
+            // Get days from previous month
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+            const prevMonthDays = [];
+            for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+                prevMonthDays.push(prevMonthLastDay - i);
+            }
+            
+            // Build calendar grid
+            let html = '<div class="calendar-grid">';
+            
+            // Day headers
+            const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            dayNames.forEach(day => {
+                html += `<div class="calendar-day-header">${day}</div>`;
+            });
+            
+            // Previous month days
+            prevMonthDays.forEach(day => {
+                html += `<div class="calendar-day other-month"><div class="calendar-day-number">${day}</div></div>`;
+            });
+            
+            // Current month days
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(year, month, day);
+                currentDate.setHours(0, 0, 0, 0);
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                const isToday = currentDate.getTime() === today.getTime();
+                const shift = getShiftForDate(currentDate);
+                
+                // Get events for this day
+                const events = getEventsForDate(dateStr, currentDate);
+                
+                let dayClass = 'calendar-day';
+                if (isToday) dayClass += ' today';
+                
+                html += `<div class="${dayClass}">`;
+                
+                // Shift badge
+                if (shift) {
+                    const shiftClass = shift === 'N' ? 'night' : '';
+                    html += `<div class="shift-badge ${shiftClass}">${shift}</div>`;
+                }
+                
+                html += `<div class="calendar-day-number">${day}</div>`;
+                
+                // Events
+                events.forEach(event => {
+                    html += `<div class="calendar-event ${event.type}">${event.icon} ${event.title}</div>`;
+                });
+                
+                html += '</div>';
+            }
+            
+            // Next month days to fill the grid
+            const totalCells = prevMonthDays.length + daysInMonth;
+            const remainingCells = 7 - (totalCells % 7);
+            if (remainingCells < 7) {
+                for (let day = 1; day <= remainingCells; day++) {
+                    html += `<div class="calendar-day other-month"><div class="calendar-day-number">${day}</div></div>`;
+                }
+            }
+            
+            html += '</div>';
+            
+            document.getElementById('calendarContainer').innerHTML = html;
+        }
+
+        function getEventsForDate(dateStr, date) {
+            const events = [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Get maintenance visits
+            if (window.visits) {
+                window.visits.forEach(visit => {
+                    if (visit.scheduledDate === dateStr && visit.status !== 'completed') {
+                        const isOverdue = date < today;
+                        events.push({
+                            type: visit.pipelineJobId ? 'project' : (isOverdue ? 'overdue' : 'maintenance'),
+                            icon: visit.pipelineJobId ? '🎯' : (isOverdue ? '⚠️' : '🔧'),
+                            title: visit.siteName || visit.customerName || 'Visit'
+                        });
+                    }
+                });
+            }
+            
+            // Get calendar events/holidays
+            if (window.calendarEvents) {
+                window.calendarEvents.forEach(event => {
+                    if (event.date === dateStr) {
+                        let icon = '🏖️';
+                        let type = 'holiday';
+                        
+                        if (event.type === 'bankholiday') {
+                            icon = '🎄';
+                            type = 'holiday';
+                        } else if (event.type === 'office') {
+                            icon = '🏢';
+                            type = 'holiday';
+                        } else if (event.type === 'reminder') {
+                            icon = 'ℹ️';
+                            type = 'holiday';
+                        }
+                        
+                        events.push({
+                            type: type,
+                            icon: icon,
+                            title: event.title,
+                            id: event.id,
+                            isCalendarEvent: true
+                        });
+                    }
+                });
+            }
+            
+            return events;
+        }
+
+        window.navigateCalendar = function(direction) {
+            if (direction === 'prev') {
+                currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            } else if (direction === 'next') {
+                currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            } else if (direction === 'today') {
+                currentCalendarDate = new Date();
+            }
+            renderCalendar();
+        };
+
+        // ============================================
+        // EVENT/HOLIDAY MANAGEMENT FUNCTIONS
+        // ============================================
+
+        window.calendarEvents = [];
+
+        // Open/Close Event Modal
+        window.openAddEventModal = function() {
+            document.getElementById('addEventModal').classList.add('active');
+            // Set default date to today
+            document.getElementById('eventDate').valueAsDate = new Date();
+        };
+
+        window.closeAddEventModal = function() {
+            document.getElementById('addEventModal').classList.remove('active');
+            document.getElementById('addEventForm').reset();
+        };
+
+        // Add Event Form Handler
+        document.getElementById('addEventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('eventTitle').value;
+            const date = document.getElementById('eventDate').value;
+            const type = document.getElementById('eventType').value;
+            const notes = document.getElementById('eventNotes').value;
+            
+            try {
+                const userId = window.currentUser.uid;
+                const eventsRef = window.dbRef(window.database, `users/${userId}/calendarEvents`);
+                const newEventRef = window.dbPush(eventsRef);
+                
+                await window.dbSet(newEventRef, {
+                    title: title,
+                    date: date,
+                    type: type,
+                    notes: notes,
+                    createdAt: new Date().toISOString()
+                });
+                
+                alert('✅ Event added to calendar!');
+                closeAddEventModal();
+                
+            } catch (error) {
+                console.error('Error adding event:', error);
+                alert('Error adding event');
+            }
+        });
+
+        // Delete Event
+        window.deleteCalendarEvent = async function(eventId) {
+            if (!confirm('Delete this event?')) return;
+            
+            try {
+                const userId = window.currentUser.uid;
+                const eventRef = window.dbRef(window.database, `users/${userId}/calendarEvents/${eventId}`);
+                await window.dbRemove(eventRef);
+                alert('Event deleted');
+            } catch (error) {
+                console.error('Error deleting event:', error);
+                alert('Error deleting event');
+            }
+        };
 
         // ============================================
         // REVIEW REQUEST FUNCTIONS
