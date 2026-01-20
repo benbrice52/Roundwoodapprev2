@@ -3104,21 +3104,6 @@ This notification was generated automatically by Roundwood Route Manager.
             loadSavedCalculations();
         }
 
-        // Tab Navigation
-        window.showTab = (tabName) => {
-            // Update tab buttons
-            document.querySelectorAll('.nav-tabs button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            // Show tab content
-            document.querySelectorAll('.tab-pane').forEach(pane => {
-                pane.classList.remove('active');
-            });
-            document.getElementById(tabName).classList.add('active');
-        };
-
         // Add Site Modal
         window.openAddSiteModal = () => {
             document.getElementById('addSiteModal').classList.add('active');
@@ -3247,7 +3232,7 @@ This notification was generated automatically by Roundwood Route Manager.
             let reviewSection = '';
             
             if (stage === 'newLead') {
-                actions = `<button class="btn btn-small btn-primary" onclick="openSendQuoteModal('${job.id}')">Send Quote</button>`;
+                actions = `<button class="btn btn-small btn-primary" onclick="markAsQuoteSent('${job.id}')">Mark as Quote Sent</button>`;
             } else if (stage === 'quoteSent') {
                 actions = `<button class="btn btn-small btn-success" onclick="markAsApproved('${job.id}')">Mark as Approved</button>`;
             } else if (stage === 'approved') {
@@ -3335,14 +3320,23 @@ This notification was generated automatically by Roundwood Route Manager.
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // Filter for upcoming visits (not completed)
+            // Filter for upcoming visits (not completed and not paused)
             const upcomingVisits = window.visits.filter(visit => {
-                if (visit.completed) return false;
-                if (visit.paused) return true; // Show paused visits
+                // Exclude completed visits
+                if (visit.status === 'completed') return false;
                 
-                const visitDate = new Date(visit.date);
-                visitDate.setHours(0, 0, 0, 0);
-                return visitDate >= today; // Show today and future
+                // Exclude if visit itself is paused
+                if (visit.paused === true) return false;
+                
+                // Exclude if parent site is paused
+                if (window.sites && visit.siteId) {
+                    const parentSite = window.sites.find(s => s.id === visit.siteId);
+                    if (parentSite && parentSite.paused === true) {
+                        return false;
+                    }
+                }
+                
+                return true;
             });
 
             if (upcomingVisits.length === 0) {
@@ -3356,8 +3350,8 @@ This notification was generated automatically by Roundwood Route Manager.
                 return;
             }
 
-            // Sort by date
-            upcomingVisits.sort((a, b) => new Date(a.date) - new Date(b.date));
+            // Sort by date (earliest first)
+            upcomingVisits.sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
 
             // Render visits
             container.innerHTML = `
@@ -3369,7 +3363,7 @@ This notification was generated automatically by Roundwood Route Manager.
 
         // Create visit card HTML
         function createVisitCard(visit) {
-            const visitDate = new Date(visit.date);
+            const visitDate = new Date(visit.scheduledDate);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             visitDate.setHours(0, 0, 0, 0);
@@ -3398,39 +3392,83 @@ This notification was generated automatically by Roundwood Route Manager.
                 urgencyText = `${daysUntil} DAYS`;
             }
 
+            // Determine border color based on urgency
+            let borderColor = '#e5e7eb'; // default gray
+            if (visit.paused) {
+                borderColor = '#3b82f6'; // blue
+            } else if (daysUntil < 0) {
+                borderColor = '#ef4444'; // red for overdue
+            } else if (daysUntil === 0) {
+                borderColor = '#ef4444'; // red for today
+            } else if (daysUntil <= 3) {
+                borderColor = '#f59e0b'; // orange
+            } else if (daysUntil <= 7) {
+                borderColor = '#10b981'; // green
+            }
+
+            const price = visit.price ? `£${parseFloat(visit.price).toFixed(2)}` : '£0.00';
+
             return `
-                <div class="visit-card" style="background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                        <div>
-                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--gray-900);">${visit.siteName}</h3>
-                            <div style="color: var(--gray-600); font-size: 0.9rem;">${visit.address}</div>
-                        </div>
-                        <span class="badge badge-${urgencyClass}">${urgencyText}</span>
+                <div class="visit-card" style="
+                    background: white; 
+                    border: 1px solid var(--gray-200); 
+                    border-left: 4px solid ${borderColor};
+                    border-radius: 8px; 
+                    padding: 1.5rem; 
+                    margin-bottom: 1rem;
+                    position: relative;
+                ">
+                    <!-- Badge at top right -->
+                    <div style="position: absolute; top: 1.5rem; right: 1.5rem;">
+                        <span class="badge badge-${urgencyClass}" style="font-size: 0.75rem; font-weight: 600;">${urgencyText}</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Date</div>
-                            <div style="font-weight: 500;">${visitDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Service</div>
-                            <div style="font-weight: 500;">${visit.serviceType || 'Maintenance'}</div>
-                        </div>
-                        ${visit.notes ? `
-                        <div style="grid-column: 1 / -1;">
-                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Notes</div>
-                            <div style="color: var(--gray-700);">${visit.notes}</div>
-                        </div>
-                        ` : ''}
+                    
+                    <!-- Site name -->
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 600; color: var(--gray-900); padding-right: 6rem;">
+                        ${visit.siteName}
+                    </h3>
+                    
+                    <!-- Date -->
+                    <div style="color: var(--gray-600); font-size: 0.95rem; margin-bottom: 0.75rem;">
+                        ${visitDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                     </div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        ${!visit.paused ? `
-                            <button class="btn btn-success btn-small" onclick="completeVisit('${visit.id}')">✓ Mark Complete</button>
-                            <button class="btn btn-secondary btn-small" onclick="editVisit('${visit.id}')">Edit</button>
-                        ` : `
-                            <button class="btn btn-primary btn-small" onclick="resumeVisit('${visit.id}')">Resume</button>
-                        `}
+                    
+                    <!-- Address -->
+                    <div style="color: var(--gray-600); font-size: 0.95rem; margin-bottom: 1.25rem;">
+                        ${visit.siteAddress}
                     </div>
+                    
+                    <!-- Visit Price -->
+                    <div style="margin-bottom: 1.25rem;">
+                        <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; font-weight: 600;">
+                            VISIT PRICE
+                        </div>
+                        <div style="font-size: 1rem; font-weight: 500; color: var(--gray-900);">
+                            ${price}
+                        </div>
+                    </div>
+                    
+                    ${visit.notes ? `
+                    <div style="margin-bottom: 1.25rem; padding: 0.75rem; background: var(--gray-50); border-radius: 6px;">
+                        <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; font-weight: 600;">
+                            NOTES
+                        </div>
+                        <div style="color: var(--gray-700); font-size: 0.9rem;">
+                            ${visit.notes}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- Button -->
+                    ${!visit.paused ? `
+                        <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="width: 100%; padding: 0.875rem; font-size: 1rem; font-weight: 500;">
+                            ✓ Complete Visit
+                        </button>
+                    ` : `
+                        <button class="btn btn-primary" onclick="resumeVisit('${visit.id}')" style="width: 100%; padding: 0.875rem; font-size: 1rem; font-weight: 500;">
+                            ▶ Resume Visit
+                        </button>
+                    `}
                 </div>
             `;
         }
@@ -3450,81 +3488,256 @@ This notification was generated automatically by Roundwood Route Manager.
                 return;
             }
 
-            if (!window.visits || window.visits.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="padding: 3rem;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
-                        <div class="empty-state-text">No invoices to track</div>
-                        <p style="color: var(--gray-500); margin-top: 0.5rem;">Complete visits will appear here for invoicing</p>
-                    </div>
-                `;
-                return;
+            // Collect items needing invoicing from both pipeline and visits
+            let needsInvoice = [];
+            let awaitingPayment = [];
+
+            // Check pipeline jobs
+            if (window.pipelineJobs) {
+                window.pipelineJobs.forEach(job => {
+                    if (job.stage === 'complete') {
+                        needsInvoice.push({
+                            type: 'pipeline',
+                            id: job.id,
+                            customerName: job.customerName,
+                            jobReference: job.jobReference,
+                            projectType: job.projectType || job.jobDescription,
+                            amount: job.quoteAmount,
+                            completedDate: job.completedDate,
+                            ...job
+                        });
+                    } else if (job.stage === 'invoiced') {
+                        awaitingPayment.push({
+                            type: 'pipeline',
+                            id: job.id,
+                            customerName: job.customerName,
+                            jobReference: job.jobReference,
+                            projectType: job.projectType || job.jobDescription,
+                            amount: job.quoteAmount,
+                            invoicedDate: job.invoicedDate,
+                            ...job
+                        });
+                    }
+                });
             }
 
-            // Filter for completed but not invoiced visits
-            const needsInvoice = window.visits.filter(visit => 
-                visit.completed && !visit.invoiced
-            );
+            // Check completed visits
+            if (window.visits) {
+                window.visits.forEach(visit => {
+                    if (visit.status === 'completed' && !visit.invoiced) {
+                        needsInvoice.push({
+                            type: 'visit',
+                            id: visit.id,
+                            siteName: visit.siteName,
+                            siteAddress: visit.siteAddress,
+                            amount: visit.price,
+                            completedDate: visit.completedDate,
+                            ...visit
+                        });
+                    }
+                });
+            }
 
-            if (needsInvoice.length === 0) {
+            // Show empty state if nothing to display
+            if (needsInvoice.length === 0 && awaitingPayment.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state" style="padding: 3rem;">
                         <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
                         <div class="empty-state-text">All caught up!</div>
-                        <p style="color: var(--gray-500); margin-top: 0.5rem;">No completed visits awaiting invoices</p>
+                        <p style="color: var(--gray-500); margin-top: 0.5rem;">No invoices awaiting to be sent</p>
                     </div>
                 `;
                 return;
             }
 
-            // Sort by completion date (most recent first)
-            needsInvoice.sort((a, b) => new Date(b.completedDate || b.date) - new Date(a.completedDate || a.date));
+            // Sort by date
+            needsInvoice.sort((a, b) => new Date(b.completedDate || 0) - new Date(a.completedDate || 0));
+            awaitingPayment.sort((a, b) => new Date(b.invoicedDate || 0) - new Date(a.invoicedDate || 0));
 
-            container.innerHTML = `
-                <div style="padding: 1.5rem;">
-                    <div class="alert alert-warning" style="margin-bottom: 1.5rem;">
-                        <strong>💡 Tip:</strong> Invoice completed work promptly to maintain healthy cash flow!
+            // Render sections
+            let html = '<div style="padding: 1.5rem;">';
+
+            // Section 1: Needs Invoice
+            if (needsInvoice.length > 0) {
+                html += `
+                    <div style="margin-bottom: 2rem;">
+                        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--gray-900);">
+                            📄 Awaiting Invoice (${needsInvoice.length})
+                        </h2>
+                        <div class="alert alert-warning" style="margin-bottom: 1rem;">
+                            <strong>💡 Tip:</strong> Send invoices promptly to maintain healthy cash flow!
+                        </div>
+                        ${needsInvoice.map(item => createInvoiceCard(item)).join('')}
                     </div>
-                    ${needsInvoice.map(visit => createInvoiceCard(visit)).join('')}
-                </div>
-            `;
+                `;
+            }
+
+            // Section 2: Awaiting Payment
+            if (awaitingPayment.length > 0) {
+                html += `
+                    <div style="margin-bottom: 2rem;">
+                        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--gray-900);">
+                            💰 Awaiting Payment (${awaitingPayment.length})
+                        </h2>
+                        ${awaitingPayment.map(item => createPaymentCard(item)).join('')}
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
         }
 
-        // Create invoice card HTML
-        function createInvoiceCard(visit) {
-            const completedDate = new Date(visit.completedDate || visit.date);
+        // Create invoice card HTML (for items needing invoice)
+        function createInvoiceCard(item) {
+            const completedDate = new Date(item.completedDate || item.scheduledDate);
             const daysSince = Math.floor((new Date() - completedDate) / (1000 * 60 * 60 * 24));
             
             let urgencyClass = daysSince > 7 ? 'danger' : daysSince > 3 ? 'warning' : 'success';
+            let borderColor = daysSince > 7 ? '#ef4444' : daysSince > 3 ? '#f59e0b' : '#10b981';
+
+            const amount = item.amount ? `£${parseFloat(item.amount).toFixed(2)}` : '£0.00';
+
+            if (item.type === 'pipeline') {
+                // Pipeline job card
+                return `
+                    <div class="invoice-card" style="
+                        background: white; 
+                        border: 1px solid var(--gray-200); 
+                        border-left: 4px solid ${borderColor};
+                        border-radius: 8px; 
+                        padding: 1.5rem; 
+                        margin-bottom: 1rem;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                    PROJECT • JOB #${item.jobReference}
+                                </div>
+                                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 600; color: var(--gray-900);">
+                                    ${item.customerName}
+                                </h3>
+                                <div style="color: var(--gray-600); font-size: 0.95rem;">
+                                    ${item.projectType}
+                                </div>
+                            </div>
+                            <span class="badge badge-${urgencyClass}" style="font-size: 0.75rem; font-weight: 600;">
+                                ${daysSince} days ago
+                            </span>
+                        </div>
+                        
+                        <div style="margin-bottom: 1.25rem;">
+                            <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; font-weight: 600;">
+                                INVOICE AMOUNT
+                            </div>
+                            <div style="font-size: 1.25rem; font-weight: 600; color: var(--success);">
+                                ${amount}
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-success" onclick="sendInvoice('${item.id}')" style="flex: 1;">
+                                📧 Send Invoice
+                            </button>
+                            <button class="btn btn-secondary" onclick="markAsPaid('${item.id}')" style="flex: 1;">
+                                ✓ Mark as Paid
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Visit card
+                return `
+                    <div class="invoice-card" style="
+                        background: white; 
+                        border: 1px solid var(--gray-200); 
+                        border-left: 4px solid ${borderColor};
+                        border-radius: 8px; 
+                        padding: 1.5rem; 
+                        margin-bottom: 1rem;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                    VISIT
+                                </div>
+                                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 600; color: var(--gray-900);">
+                                    ${item.siteName}
+                                </h3>
+                                <div style="color: var(--gray-600); font-size: 0.95rem;">
+                                    ${item.siteAddress}
+                                </div>
+                            </div>
+                            <span class="badge badge-${urgencyClass}" style="font-size: 0.75rem; font-weight: 600;">
+                                ${daysSince} days ago
+                            </span>
+                        </div>
+                        
+                        <div style="margin-bottom: 1.25rem;">
+                            <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; font-weight: 600;">
+                                INVOICE AMOUNT
+                            </div>
+                            <div style="font-size: 1.25rem; font-weight: 600; color: var(--success);">
+                                ${amount}
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-success" onclick="markVisitAsInvoiced('${item.id}')" style="width: 100%;">
+                            ✓ Mark as Invoiced
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Create payment card HTML (for items awaiting payment)
+        function createPaymentCard(item) {
+            const invoicedDate = new Date(item.invoicedDate);
+            const daysSince = Math.floor((new Date() - invoicedDate) / (1000 * 60 * 60 * 24));
+            
+            let urgencyClass = daysSince > 30 ? 'danger' : daysSince > 14 ? 'warning' : 'info';
+            let borderColor = daysSince > 30 ? '#ef4444' : daysSince > 14 ? '#f59e0b' : '#3b82f6';
+
+            const amount = item.amount ? `£${parseFloat(item.amount).toFixed(2)}` : '£0.00';
 
             return `
-                <div class="invoice-card" style="background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                <div class="payment-card" style="
+                    background: white; 
+                    border: 1px solid var(--gray-200); 
+                    border-left: 4px solid ${borderColor};
+                    border-radius: 8px; 
+                    padding: 1.5rem; 
+                    margin-bottom: 1rem;
+                ">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                         <div>
-                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--gray-900);">${visit.siteName}</h3>
-                            <div style="color: var(--gray-600); font-size: 0.9rem;">${visit.address}</div>
+                            <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                PROJECT • JOB #${item.jobReference}
+                            </div>
+                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 600; color: var(--gray-900);">
+                                ${item.customerName}
+                            </h3>
+                            <div style="color: var(--gray-600); font-size: 0.95rem;">
+                                ${item.projectType}
+                            </div>
                         </div>
-                        <span class="badge badge-${urgencyClass}">${daysSince} days ago</span>
+                        <span class="badge badge-${urgencyClass}" style="font-size: 0.75rem; font-weight: 600;">
+                            ${daysSince} days
+                        </span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Completed</div>
-                            <div style="font-weight: 500;">${completedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    
+                    <div style="margin-bottom: 1.25rem;">
+                        <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; font-weight: 600;">
+                            AMOUNT DUE
                         </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Service</div>
-                            <div style="font-weight: 500;">${visit.serviceType || 'Maintenance'}</div>
+                        <div style="font-size: 1.25rem; font-weight: 600; color: var(--warning);">
+                            ${amount}
                         </div>
-                        ${visit.completionNotes ? `
-                        <div style="grid-column: 1 / -1;">
-                            <div style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.25rem;">Work Done</div>
-                            <div style="color: var(--gray-700);">${visit.completionNotes}</div>
-                        </div>
-                        ` : ''}
                     </div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-primary btn-small" onclick="markAsInvoiced('${visit.id}')">📄 Mark as Invoiced</button>
-                    </div>
+                    
+                    <button class="btn btn-success" onclick="markAsPaid('${item.id}')" style="width: 100%;">
+                        💰 Mark as Paid
+                    </button>
                 </div>
             `;
         }
@@ -4511,62 +4724,6 @@ This notification was generated automatically by Roundwood Route Manager.
             }
         };
 
-        // Render Visits
-        function renderVisits() {
-            const container = document.getElementById('visitsContainer');
-            const today = new Date().toISOString().split('T')[0];
-            
-            const upcomingVisits = visits
-                .filter(v => v.status === 'pending')
-                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
-
-            if (upcomingVisits.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📅</div>
-                        <div class="empty-state-title">No upcoming visits</div>
-                        <div class="empty-state-text">All visits are completed or there are no sites yet</div>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = upcomingVisits.map(visit => {
-                const isOverdue = visit.scheduledDate < today && visit.status !== 'paused';
-                const visitDate = new Date(visit.scheduledDate);
-                const formattedDate = visitDate.toLocaleDateString('en-GB', { 
-                    weekday: 'short', 
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: 'numeric' 
-                });
-
-                return `
-                    <div class="visit-card ${isOverdue ? 'overdue' : ''}">
-                        <div class="visit-header">
-                            <div>
-                                <div class="visit-site">${visit.siteName}</div>
-                                <div class="visit-date">${formattedDate}</div>
-                                <div class="site-address" style="margin-top: 0.5rem;">${visit.siteAddress}</div>
-                            </div>
-                            <span class="visit-status ${visit.status === 'paused' ? 'status-paused' : (isOverdue ? 'status-overdue' : 'status-pending')}">
-                                ${visit.status === 'paused' ? 'Paused' : (isOverdue ? 'Overdue' : 'Pending')}
-                            </span>
-                        </div>
-                        <div class="meta-item" style="margin-top: 1rem;">
-                            <div class="meta-label">Visit Price</div>
-                            <div class="meta-value">£${visit.price.toFixed(2)}</div>
-                        </div>
-                        <div class="visit-actions">
-                            <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="flex: 1;">
-                                ✓ Complete Visit
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
         // Complete Visit Modal
         window.openCompleteVisitModal = (visitId) => {
             document.getElementById('completeVisitId').value = visitId;
@@ -4763,6 +4920,11 @@ This notification was generated automatically by Roundwood Route Manager.
                 // Open email client with pre-filled details
                 sendInvoiceEmail(visitForEmail);
                 
+                // Refresh all views
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof renderInvoices === 'function') renderInvoices();
+                if (typeof updateStats === 'function') updateStats();
+                
                 alert('✅ Visit completed!\n📧 Email opening to office@roundwoodsolutions.co.uk\n📅 Next visit scheduled');
             } catch (error) {
                 console.error('Error completing visit:', error);
@@ -4787,69 +4949,6 @@ This notification was generated automatically by Roundwood Route Manager.
                 alert('Error updating invoice status. Please try again.');
             }
         };
-
-        // Render Invoices
-        function renderInvoices() {
-            const container = document.getElementById('invoicesContainer');
-            
-            const uninvoicedVisits = visits
-                .filter(v => v.status === 'completed' && v.invoiceStatus === 'pending')
-                .sort((a, b) => new Date(a.completedDate) - new Date(b.completedDate));
-
-            if (uninvoicedVisits.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">💰</div>
-                        <div class="empty-state-title">All caught up!</div>
-                        <div class="empty-state-text">No invoices awaiting to be sent</div>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = uninvoicedVisits.map(visit => {
-                const completedDate = new Date(visit.completedDate);
-                const formattedDate = completedDate.toLocaleDateString('en-GB', { 
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: 'numeric' 
-                });
-
-                return `
-                    <div class="visit-card">
-                        <div class="visit-header">
-                            <div>
-                                <div class="visit-site">${visit.siteName}</div>
-                                <div class="visit-date">Completed: ${formattedDate}</div>
-                                <div class="site-address" style="margin-top: 0.5rem;">${visit.siteAddress}</div>
-                            </div>
-                            <span class="visit-status status-pending">Invoice Needed</span>
-                        </div>
-                        <div class="meta-item" style="margin-top: 1rem;">
-                            <div class="meta-label">Amount</div>
-                            <div class="meta-value">£${visit.price.toFixed(2)}</div>
-                        </div>
-                        ${visit.completedBy ? `
-                            <div class="meta-item" style="margin-top: 0.5rem;">
-                                <div class="meta-label">Completed By</div>
-                                <div class="meta-value">${visit.completedBy}</div>
-                            </div>
-                        ` : ''}
-                        ${visit.completionNotes ? `
-                            <div class="meta-item" style="margin-top: 0.5rem;">
-                                <div class="meta-label">Notes</div>
-                                <div class="meta-value">${visit.completionNotes}</div>
-                            </div>
-                        ` : ''}
-                        <div class="visit-actions">
-                            <button class="btn btn-success" onclick="markInvoiceSent('${visit.id}')" style="flex: 1;">
-                                ✓ Mark Invoice Sent
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
 
         // Render History
         function renderHistory() {
@@ -5211,7 +5310,7 @@ Roundwood Solutions Limited
                 `;
                 
                 html += overdueVisits.map(visit => {
-                    const visitDate = new Date(visit.date);
+                    const visitDate = new Date(visit.scheduledDate);
                     const formattedDate = visitDate.toLocaleDateString('en-GB', { 
                         weekday: 'short', 
                         day: 'numeric', 
@@ -5348,15 +5447,27 @@ Roundwood Solutions Limited
             }
             
             if (window.visits) {
-                // Count upcoming visits
-                const upcomingVisits = window.visits.filter(v => !v.completed && !v.paused).length;
+                // Count upcoming visits (not completed and not paused)
+                // Check both visit paused and parent site paused
+                const upcomingVisits = window.visits.filter(v => {
+                    if (v.status === 'completed') return false;
+                    if (v.paused === true) return false;
+                    
+                    // Check if parent site is paused
+                    if (window.sites && v.siteId) {
+                        const parentSite = window.sites.find(s => s.id === v.siteId);
+                        if (parentSite && parentSite.paused === true) return false;
+                    }
+                    
+                    return true;
+                }).length;
                 const upcomingBadge = document.getElementById('upcomingCount');
                 if (upcomingBadge) {
                     upcomingBadge.textContent = upcomingVisits;
                 }
                 
                 // Count completed visits not yet invoiced
-                const visitInvoices = window.visits.filter(v => v.completed && !v.invoiced).length;
+                const visitInvoices = window.visits.filter(v => v.status === 'completed' && !v.invoiced).length;
                 totalNeedsInvoice += visitInvoices;
             }
             
@@ -5940,6 +6051,21 @@ Roundwood Solutions Limited
         // PIPELINE ACTION FUNCTIONS
         // ========================================
         
+        window.markAsQuoteSent = async function(jobId) {
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, { 
+                    stage: 'quoteSent', 
+                    quoteSentDate: new Date().toISOString() 
+                });
+                alert('✅ Job marked as quote sent!');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating job');
+            }
+        };
+        
         window.markAsApproved = async function(jobId) {
             try {
                 const userId = window.currentUser.uid;
@@ -6000,14 +6126,17 @@ Roundwood Solutions Limited
             }
         };
         
-        window.completeVisit = async function(visitId) {
-            const notes = prompt('Completion notes (optional):');
+        // Note: Visit completion now uses openCompleteVisitModal() which shows full form with signature
+        
+        window.markVisitAsInvoiced = async function(visitId) {
             try {
                 const userId = window.currentUser.uid;
                 const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
-                await window.dbUpdate(visitRef, { completed: true, completedDate: new Date().toISOString(), completionNotes: notes || '' });
-                alert('✅ Visit complete!');
-                if (typeof renderVisits === 'function') renderVisits();
+                await window.dbUpdate(visitRef, { 
+                    invoiced: true, 
+                    invoicedDate: new Date().toISOString() 
+                });
+                alert('✅ Visit marked as invoiced!');
                 if (typeof renderInvoices === 'function') renderInvoices();
                 if (typeof updateStats === 'function') updateStats();
             } catch (error) {
@@ -6266,10 +6395,10 @@ Roundwood Solutions Limited
                     sitesCSV += `"${site.name}","${site.address}","${freq}","${site.contact || ''}","${site.phone || ''}","${site.email || ''}","${site.contractNotes || ''}","${status}"\n`;
                 });
 
-                let visitsCSV = 'Site Name,Address,Scheduled Date,Price,Status,Invoice Sent,Completed Date\n';
+                let visitsCSV = 'Site Name,Address,Scheduled Date,Price,Status,Invoiced,Completed Date\n';
                 window.visits.forEach(visit => {
-                    const status = visit.completed ? 'Completed' : (visit.status === 'paused' ? 'Paused' : (visit.scheduledDate < new Date().toISOString().split('T')[0] ? 'Overdue' : 'Pending'));
-                    visitsCSV += `"${visit.siteName}","${visit.siteAddress}","${formatDateForExcel(visit.scheduledDate)}","£${visit.price.toFixed(2)}","${status}","${visit.invoiceSent ? 'Yes' : 'No'}","${visit.completedDate ? formatDateForExcel(visit.completedDate) : ''}"\n`;
+                    const status = visit.status === 'completed' ? 'Completed' : (visit.status === 'paused' ? 'Paused' : (visit.scheduledDate < new Date().toISOString().split('T')[0] ? 'Overdue' : 'Pending'));
+                    visitsCSV += `"${visit.siteName}","${visit.siteAddress}","${formatDateForExcel(visit.scheduledDate)}","£${visit.price.toFixed(2)}","${status}","${visit.invoiced ? 'Yes' : 'No'}","${visit.completedDate ? formatDateForExcel(visit.completedDate) : ''}"\n`;
                 });
 
                 let projectsCSV = 'Project Name,Client,Start Date,Status,Budget,Description,Completion Date\n';
@@ -6293,11 +6422,11 @@ Roundwood Solutions Limited
 
                 // Get invoices (uninvoiced visits)
                 let invoicesCSV = 'Site Name,Visit Date,Amount,Status,Invoice Sent Date\n';
-                window.visits.filter(v => v.completed && !v.invoiceSent).forEach(visit => {
+                window.visits.filter(v => v.status === 'completed' && !v.invoiced).forEach(visit => {
                     invoicesCSV += `"${visit.siteName}","${formatDateForExcel(visit.completedDate)}","£${visit.price.toFixed(2)}","Awaiting Invoice",""\n`;
                 });
-                window.visits.filter(v => v.invoiceSent).forEach(visit => {
-                    invoicesCSV += `"${visit.siteName}","${formatDateForExcel(visit.completedDate)}","£${visit.price.toFixed(2)}","Invoice Sent","${formatDateForExcel(visit.invoiceSentDate)}"\n`;
+                window.visits.filter(v => v.invoiced).forEach(visit => {
+                    invoicesCSV += `"${visit.siteName}","${formatDateForExcel(visit.completedDate)}","£${visit.price.toFixed(2)}","Invoice Sent","${formatDateForExcel(visit.invoicedDate || visit.completedDate)}"\n`;
                 });
 
                 // Load saved calibrations from localStorage
