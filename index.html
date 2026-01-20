@@ -2079,11 +2079,13 @@
                     <div class="form-group">
                         <label for="siteFrequency">Visit Frequency *</label>
                         <select id="siteFrequency" required class="form-group input" style="width: 100%; padding: 0.75rem; border: 2px solid var(--gray-200); border-radius: 8px;">
-                            <option value="7">Weekly</option>
-                            <option value="14">Fortnightly</option>
-                            <option value="28">4-Weekly</option>
-                            <option value="30">Monthly</option>
+                            <option value="7">Weekly (7 days)</option>
+                            <option value="14">Fortnightly (14 days)</option>
+                            <option value="28">4-Weekly (28 days)</option>
+                            <option value="30">Monthly (30 days)</option>
+                            <option value="0">Custom Schedule (set dates manually)</option>
                         </select>
+                        <small>For Custom: You'll set the next visit date each time you complete a visit</small>
                     </div>
                     
                     <div class="form-group">
@@ -3154,12 +3156,24 @@ This notification was generated automatically by Roundwood Route Manager.
             document.getElementById('siteFirstVisit').valueAsDate = new Date();
         };
 
+        // Track if we're editing a site
+        let editingSiteId = null;
+
         window.closeAddSiteModal = () => {
             document.getElementById('addSiteModal').classList.remove('active');
             document.getElementById('addSiteForm').reset();
+            editingSiteId = null; // Clear edit mode
+            
+            // Reset button text
+            const submitBtn = document.querySelector('#addSiteForm button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = 'Add Site';
+            
+            // Reset title
+            const titleElement = document.querySelector('#addSiteModal .modal-title');
+            if (titleElement) titleElement.textContent = '+ Add New Site';
         };
 
-        // Add Site Handler
+        // Add/Update Site Handler
         document.getElementById('addSiteForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -3170,35 +3184,58 @@ This notification was generated automatically by Roundwood Route Manager.
                 phone: document.getElementById('sitePhone').value,
                 frequency: parseInt(document.getElementById('siteFrequency').value),
                 price: parseFloat(document.getElementById('sitePrice').value),
-                firstVisit: document.getElementById('siteFirstVisit').value,
-                notes: document.getElementById('siteNotes').value,
-                createdAt: new Date().toISOString()
+                notes: document.getElementById('siteNotes').value
             };
 
             try {
                 const userId = window.currentUser.uid;
-                const siteRef = window.dbPush(window.dbRef(window.database, `users/${userId}/sites`));
-                await window.dbSet(siteRef, siteData);
+                
+                if (editingSiteId) {
+                    // UPDATE existing site
+                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${editingSiteId}`), siteData);
 
-                // Create first visit
-                const visitData = {
-                    siteId: siteRef.key,
-                    siteName: siteData.name,
-                    siteAddress: siteData.address,
-                    scheduledDate: siteData.firstVisit,
-                    price: siteData.price,
-                    frequency: siteData.frequency,
-                    status: 'pending',
-                    createdAt: new Date().toISOString()
-                };
+                    // Update all pending visits for this site
+                    const siteVisits = window.visits.filter(v => v.siteId === editingSiteId && v.status === 'pending');
+                    for (const visit of siteVisits) {
+                        await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                            siteName: siteData.name,
+                            siteAddress: siteData.address,
+                            price: siteData.price,
+                            frequency: siteData.frequency
+                        });
+                    }
 
-                const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
-                await window.dbSet(visitRef, visitData);
+                    alert('✅ Site updated successfully!');
+                    closeAddSiteModal();
+                } else {
+                    // ADD new site
+                    siteData.firstVisit = document.getElementById('siteFirstVisit').value;
+                    siteData.createdAt = new Date().toISOString();
+                    
+                    const siteRef = window.dbPush(window.dbRef(window.database, `users/${userId}/sites`));
+                    await window.dbSet(siteRef, siteData);
 
-                closeAddSiteModal();
+                    // Create first visit
+                    const visitData = {
+                        siteId: siteRef.key,
+                        siteName: siteData.name,
+                        siteAddress: siteData.address,
+                        scheduledDate: siteData.firstVisit,
+                        price: siteData.price,
+                        frequency: siteData.frequency,
+                        status: 'pending',
+                        createdAt: new Date().toISOString()
+                    };
+
+                    const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                    await window.dbSet(visitRef, visitData);
+
+                    alert('✅ Site added successfully!');
+                    closeAddSiteModal();
+                }
             } catch (error) {
-                console.error('Error adding site:', error);
-                alert('Error adding site. Please try again.');
+                console.error('Error saving site:', error);
+                alert('Error saving site. Please try again.');
             }
         });
 
@@ -3268,7 +3305,17 @@ This notification was generated automatically by Roundwood Route Manager.
 
         // Create pipeline job card HTML
         function createPipelineJobCard(job, stage) {
-            const value = job.estimatedValue ? `£${job.estimatedValue.toLocaleString()}` : 'No value set';
+            // Show quoted price if available (from quote sent onwards), otherwise estimated value
+            let value = 'No value set';
+            let priceLabel = '';
+            
+            if (job.quotedPrice) {
+                value = `£${job.quotedPrice.toLocaleString()}`;
+                priceLabel = '<span style="font-size: 0.75rem; color: var(--gray-500); display: block;">Quoted</span>';
+            } else if (job.estimatedValue) {
+                value = `£${job.estimatedValue.toLocaleString()}`;
+                priceLabel = '<span style="font-size: 0.75rem; color: var(--gray-500); display: block;">Estimated</span>';
+            }
             
             // Stage-specific actions
             let actions = '';
@@ -3341,13 +3388,16 @@ This notification was generated automatically by Roundwood Route Manager.
                                 ${job.responsiblePerson ? `<span style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">👤 ${job.responsiblePerson}</span>` : ''}
                             </div>
                         </div>
-                        <div style="font-weight: 600; color: var(--primary);">${value}</div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 600; color: var(--primary);">${value}</div>
+                            ${priceLabel}
+                        </div>
                     </div>
                     <div style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 0.5rem;">${job.projectType}</div>
                     <div style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 1rem;">${job.jobDescription}</div>
                     ${job.customerPhone ? `<div style="color: var(--gray-500); font-size: 0.85rem; margin-bottom: 0.25rem;">📞 ${job.customerPhone}</div>` : ''}
                     ${job.customerEmail ? `<div style="color: var(--gray-500); font-size: 0.85rem; margin-bottom: 0.75rem;">📧 ${job.customerEmail}</div>` : ''}
-                    ${job.quoteDeadline ? `
+                    ${(stage === 'newLead' || stage === 'quoteSent') && job.quoteDeadline ? `
                         <div style="background: ${new Date(job.quoteDeadline) < new Date() ? '#fef3c7' : '#dbeafe'}; border: 1px solid ${new Date(job.quoteDeadline) < new Date() ? '#f59e0b' : '#3b82f6'}; border-radius: 6px; padding: 0.5rem; margin-bottom: 0.75rem;">
                             <div style="display: flex; align-items: center; gap: 0.5rem; color: ${new Date(job.quoteDeadline) < new Date() ? '#92400e' : '#1e40af'};">
                                 <span>⏰</span>
@@ -3393,8 +3443,11 @@ This notification was generated automatically by Roundwood Route Manager.
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // Filter for upcoming visits (not completed and not paused)
-            const upcomingVisits = window.visits.filter(visit => {
+            console.log('=== VISITS DEBUG INFO ===');
+            console.log('Total visits in database:', window.visits.length);
+
+            // Filter for pending visits (not completed and not paused)
+            const pendingVisits = window.visits.filter(visit => {
                 // Exclude completed visits
                 if (visit.status === 'completed') return false;
                 
@@ -3412,6 +3465,67 @@ This notification was generated automatically by Roundwood Route Manager.
                 return true;
             });
 
+            console.log('Pending visits (not completed, not paused):', pendingVisits.length);
+
+            // Separate into projects and maintenance visits
+            const projectVisits = [];
+            const maintenanceVisits = [];
+            
+            pendingVisits.forEach(visit => {
+                if (visit.pipelineJobId) {
+                    // This is a project visit - include all of them
+                    projectVisits.push(visit);
+                } else {
+                    // This is a maintenance visit - we'll filter these
+                    maintenanceVisits.push(visit);
+                }
+            });
+
+            console.log('Project visits (all shown):', projectVisits.length);
+            console.log('Maintenance visits (before filtering):', maintenanceVisits.length);
+
+            // For maintenance: only keep the NEXT visit for each site
+            const nextMaintenanceVisits = [];
+            const siteVisitMap = {};
+            const visitsWithoutSiteId = [];
+            
+            // Group by siteId and find earliest visit for each site
+            maintenanceVisits.forEach(visit => {
+                if (!visit.siteId) {
+                    // No siteId, include it anyway
+                    visitsWithoutSiteId.push(visit);
+                    nextMaintenanceVisits.push(visit);
+                    return;
+                }
+                
+                if (!siteVisitMap[visit.siteId]) {
+                    // First visit for this site
+                    siteVisitMap[visit.siteId] = visit;
+                } else {
+                    // Compare dates and keep earliest
+                    const existing = siteVisitMap[visit.siteId];
+                    if (new Date(visit.scheduledDate) < new Date(existing.scheduledDate)) {
+                        siteVisitMap[visit.siteId] = visit;
+                    }
+                }
+            });
+            
+            console.log('Unique sites with visits:', Object.keys(siteVisitMap).length);
+            console.log('Visits without siteId:', visitsWithoutSiteId.length);
+            
+            // Convert map to array
+            Object.values(siteVisitMap).forEach(visit => {
+                nextMaintenanceVisits.push(visit);
+            });
+
+            console.log('Next maintenance visits (after filtering):', nextMaintenanceVisits.length);
+
+            // Combine projects (all) and maintenance (next only)
+            const upcomingVisits = [...projectVisits, ...nextMaintenanceVisits];
+
+            console.log('TOTAL VISITS TO DISPLAY:', upcomingVisits.length);
+            console.log('=== END DEBUG INFO ===');
+
             if (upcomingVisits.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state" style="padding: 3rem;">
@@ -3426,8 +3540,24 @@ This notification was generated automatically by Roundwood Route Manager.
             // Sort by date (earliest first)
             upcomingVisits.sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
 
+            // Create debug info panel
+            const debugInfo = `
+                <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1rem; margin: 1rem 1.5rem;">
+                    <div style="font-weight: 600; color: #0369a1; margin-bottom: 0.5rem;">📊 Visit Statistics:</div>
+                    <div style="font-size: 0.875rem; color: #075985; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <div>Total in database: <strong>${window.visits.length}</strong></div>
+                        <div>Pending (not done): <strong>${pendingVisits.length}</strong></div>
+                        <div>Projects: <strong>${projectVisits.length}</strong></div>
+                        <div>Maintenance: <strong>${maintenanceVisits.length}</strong></div>
+                        <div>Unique sites: <strong>${Object.keys(siteVisitMap).length}</strong></div>
+                        <div>Showing now: <strong>${upcomingVisits.length}</strong></div>
+                    </div>
+                </div>
+            `;
+
             // Render visits
             container.innerHTML = `
+                ${debugInfo}
                 <div style="padding: 1.5rem;">
                     ${upcomingVisits.map(visit => createVisitCard(visit)).join('')}
                 </div>
@@ -3590,7 +3720,7 @@ This notification was generated automatically by Roundwood Route Manager.
                             customerName: job.customerName,
                             jobReference: job.jobReference,
                             projectType: job.projectType || job.jobDescription,
-                            amount: job.quoteAmount,
+                            amount: job.quotedPrice || job.estimatedValue,  // Use quoted price, fallback to estimate
                             completedDate: job.completedDate,
                             ...job
                         });
@@ -3601,7 +3731,7 @@ This notification was generated automatically by Roundwood Route Manager.
                             customerName: job.customerName,
                             jobReference: job.jobReference,
                             projectType: job.projectType || job.jobDescription,
-                            amount: job.quoteAmount,
+                            amount: job.quotedPrice || job.estimatedValue,  // Use quoted price, fallback to estimate
                             invoicedDate: job.invoicedDate,
                             ...job
                         });
@@ -3889,6 +4019,9 @@ This notification was generated automatically by Roundwood Route Manager.
                                         ⏸️ Pause
                                     </button>
                                 `}
+                                <button class="btn btn-primary" onclick="scheduleManualVisit('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+                                    📅 Schedule Visit
+                                </button>
                                 <button class="btn btn-secondary" onclick="editSite('${site.id}')" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
                                     ✏️ Edit Site
                                 </button>
@@ -4042,6 +4175,9 @@ This notification was generated automatically by Roundwood Route Manager.
                 return;
             }
 
+            // Set edit mode
+            editingSiteId = siteId;
+
             // Open modal first
             const modal = document.getElementById('addSiteModal');
             if (!modal) {
@@ -4060,8 +4196,7 @@ This notification was generated automatically by Roundwood Route Manager.
                     sitePhone: site.phone || '',
                     sitePrice: site.price,
                     siteFrequency: site.frequency,
-                    siteNotes: site.notes || '',
-                    contractNotes: site.contractNotes || ''
+                    siteNotes: site.notes || ''
                 };
 
                 for (const [fieldId, value] of Object.entries(fields)) {
@@ -4073,56 +4208,67 @@ This notification was generated automatically by Roundwood Route Manager.
                     }
                 }
 
-                // Change form title and button
+                // Change form title and button text
                 const titleElement = document.querySelector('#addSiteModal .modal-title');
                 if (titleElement) titleElement.textContent = 'Edit Site';
                 
                 const submitBtn = document.querySelector('#addSiteForm button[type="submit"]');
                 if (submitBtn) {
                     submitBtn.textContent = 'Update Site';
-                    submitBtn.onclick = async (e) => {
-                e.preventDefault();
+                }
+
+                console.log('Edit modal populated and opened');
+            }, 100); // Wait 100ms for modal to render
+        };
+
+        // Schedule Manual Visit for a Site
+        window.scheduleManualVisit = async (siteId) => {
+            const site = window.sites.find(s => s.id === siteId);
+            if (!site) {
+                alert('Site not found');
+                return;
+            }
+
+            // Prompt for scheduled date
+            const today = new Date().toISOString().split('T')[0];
+            const scheduledDate = prompt(`Schedule visit for ${site.name}\n\nEnter date (YYYY-MM-DD):`, today);
+            
+            if (!scheduledDate) return; // User cancelled
+            
+            // Validate date format
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) {
+                alert('Invalid date format. Please use YYYY-MM-DD');
+                return;
+            }
+
+            try {
+                const userId = window.currentUser.uid;
                 
-                const updatedData = {
-                    name: document.getElementById('siteName').value,
-                    address: document.getElementById('siteAddress').value,
-                    contact: document.getElementById('siteContact').value,
-                    phone: document.getElementById('sitePhone').value,
-                    price: parseFloat(document.getElementById('sitePrice').value),
-                    frequency: parseInt(document.getElementById('siteFrequency').value),
-                    notes: document.getElementById('siteNotes').value,
-                    contractNotes: document.getElementById('contractNotes').value
+                // Create visit
+                const visitData = {
+                    siteId: siteId,
+                    siteName: site.name,
+                    siteAddress: site.address,
+                    scheduledDate: scheduledDate,
+                    price: site.price,
+                    frequency: site.frequency,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
                 };
 
-                try {
-                    const userId = window.currentUser.uid;
-                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), updatedData);
+                const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                await window.dbSet(visitRef, visitData);
 
-                    // Update all pending visits for this site
-                    const siteVisits = window.visits.filter(v => v.siteId === siteId && v.status === 'pending');
-                    for (const visit of siteVisits) {
-                        await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
-                            siteName: updatedData.name,
-                            siteAddress: updatedData.address,
-                            price: updatedData.price,
-                            frequency: updatedData.frequency
-                        });
-                    }
+                alert(`✅ Visit scheduled for ${new Date(scheduledDate).toLocaleDateString('en-GB')}!`);
 
-                    closeAddSiteModal();
-                    alert('✅ Site updated successfully!');
-                } catch (error) {
-                    console.error('Error updating site:', error);
-                    alert('Error updating site. Please try again.');
-                }
-            };
+                // Refresh views
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof updateStats === 'function') updateStats();
 
-            console.log('Opening edit modal...');
-            console.log('Modal should now be visible');
-                } else {
-                    console.error('Submit button not found');
-                }
-            }, 100); // Wait 100ms for modal to render
+            } catch (error) {
+                console.error('Error scheduling visit:', error);
+                alert('Error scheduling visit. Please try again.');
+            }
         };
 
         // Delete Site
@@ -4974,23 +5120,55 @@ This notification was generated automatically by Roundwood Route Manager.
 
                 // Create next visit (unless site is paused)
                 const site = window.sites.find(s => s.id === visit.siteId);
+                let nextVisitCreated = false;
+                
                 if (!site || !site.paused) {
-                    const nextVisitDate = new Date(visit.scheduledDate);
-                    nextVisitDate.setDate(nextVisitDate.getDate() + visit.frequency);
+                    // Check if custom schedule (frequency = 0)
+                    if (visit.frequency === 0) {
+                        // Custom schedule - prompt for next visit date
+                        const nextDateStr = prompt('This site has a custom schedule.\n\nEnter the date for the NEXT visit (YYYY-MM-DD):\n\nExample: 2026-06-15');
+                        
+                        if (nextDateStr) {
+                            // Validate date format
+                            if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDateStr)) {
+                                alert('Invalid date format. Next visit not created.\n\nYou can add it manually later.');
+                            } else {
+                                const nextVisitData = {
+                                    siteId: visit.siteId,
+                                    siteName: visit.siteName,
+                                    siteAddress: visit.siteAddress,
+                                    scheduledDate: nextDateStr,
+                                    price: visit.price,
+                                    frequency: visit.frequency,
+                                    status: 'pending',
+                                    createdAt: new Date().toISOString()
+                                };
 
-                    const nextVisitData = {
-                        siteId: visit.siteId,
-                        siteName: visit.siteName,
-                        siteAddress: visit.siteAddress,
-                        scheduledDate: nextVisitDate.toISOString().split('T')[0],
-                        price: visit.price,
-                        frequency: visit.frequency,
-                        status: 'pending',
-                        createdAt: new Date().toISOString()
-                    };
+                                const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                                await window.dbSet(nextVisitRef, nextVisitData);
+                                nextVisitCreated = true;
+                            }
+                        }
+                    } else {
+                        // Standard frequency - auto-calculate next visit
+                        const nextVisitDate = new Date(visit.scheduledDate);
+                        nextVisitDate.setDate(nextVisitDate.getDate() + visit.frequency);
 
-                    const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
-                    await window.dbSet(nextVisitRef, nextVisitData);
+                        const nextVisitData = {
+                            siteId: visit.siteId,
+                            siteName: visit.siteName,
+                            siteAddress: visit.siteAddress,
+                            scheduledDate: nextVisitDate.toISOString().split('T')[0],
+                            price: visit.price,
+                            frequency: visit.frequency,
+                            status: 'pending',
+                            createdAt: new Date().toISOString()
+                        };
+
+                        const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                        await window.dbSet(nextVisitRef, nextVisitData);
+                        nextVisitCreated = true;
+                    }
                 }
 
                 closeCompleteVisitModal();
@@ -5013,7 +5191,8 @@ This notification was generated automatically by Roundwood Route Manager.
                 if (typeof renderInvoices === 'function') renderInvoices();
                 if (typeof updateStats === 'function') updateStats();
                 
-                alert('✅ Visit completed!\n📧 Email opening to office@roundwoodsolutions.co.uk\n📅 Next visit scheduled');
+                const nextVisitMsg = nextVisitCreated ? '\n📅 Next visit scheduled' : '';
+                alert(`✅ Visit completed!\n📧 Email opening to office@roundwoodsolutions.co.uk${nextVisitMsg}`);
             } catch (error) {
                 console.error('Error completing visit:', error);
                 alert('Error completing visit. Please try again.');
@@ -5591,9 +5770,11 @@ Roundwood Solutions Limited
             }
             
             if (window.visits) {
-                // Count upcoming visits (not completed and not paused)
-                // Check both visit paused and parent site paused
-                const upcomingVisits = window.visits.filter(v => {
+                // Count upcoming visits with smart filtering
+                // Projects: ALL scheduled projects
+                // Maintenance: Only NEXT visit for each site
+                
+                const pendingVisits = window.visits.filter(v => {
                     if (v.status === 'completed') return false;
                     if (v.paused === true) return false;
                     
@@ -5604,10 +5785,33 @@ Roundwood Solutions Limited
                     }
                     
                     return true;
-                }).length;
+                });
+                
+                // Separate into projects and maintenance
+                const projectVisits = pendingVisits.filter(v => v.pipelineJobId);
+                const maintenanceVisits = pendingVisits.filter(v => !v.pipelineJobId);
+                
+                // For maintenance: only count NEXT visit per site
+                const siteVisitMap = {};
+                maintenanceVisits.forEach(visit => {
+                    if (!visit.siteId) return;
+                    
+                    if (!siteVisitMap[visit.siteId]) {
+                        siteVisitMap[visit.siteId] = visit;
+                    } else {
+                        const existing = siteVisitMap[visit.siteId];
+                        if (new Date(visit.scheduledDate) < new Date(existing.scheduledDate)) {
+                            siteVisitMap[visit.siteId] = visit;
+                        }
+                    }
+                });
+                
+                const nextMaintenanceCount = Object.keys(siteVisitMap).length;
+                const totalUpcoming = projectVisits.length + nextMaintenanceCount;
+                
                 const upcomingBadge = document.getElementById('upcomingCount');
                 if (upcomingBadge) {
-                    upcomingBadge.textContent = upcomingVisits;
+                    upcomingBadge.textContent = totalUpcoming;
                 }
                 
                 // Count completed visits not yet invoiced
@@ -6217,13 +6421,33 @@ Roundwood Solutions Limited
         
         window.markAsQuoteSent = async function(jobId) {
             try {
+                const job = window.pipelineJobs.find(j => j.id === jobId);
+                if (!job) {
+                    alert('Job not found');
+                    return;
+                }
+                
+                // Prompt for quote price
+                const defaultPrice = job.estimatedValue || '';
+                const quotePriceStr = prompt(`Enter the QUOTED PRICE for ${job.customerName}:\n\n(Estimated value: £${job.estimatedValue || 'Not set'})`, defaultPrice);
+                
+                if (quotePriceStr === null) return; // User cancelled
+                
+                const quotePrice = parseFloat(quotePriceStr);
+                
+                if (isNaN(quotePrice) || quotePrice < 0) {
+                    alert('Please enter a valid price');
+                    return;
+                }
+                
                 const userId = window.currentUser.uid;
                 const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { 
                     stage: 'quoteSent', 
-                    quoteSentDate: new Date().toISOString() 
+                    quoteSentDate: new Date().toISOString(),
+                    quotedPrice: quotePrice  // Save the quoted price
                 });
-                alert('✅ Job marked as quote sent!');
+                alert(`✅ Quote sent for £${quotePrice.toFixed(2)}!`);
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error updating job');
