@@ -1745,6 +1745,16 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="pipelineResponsiblePerson">Responsible Person *</label>
+                        <select id="pipelineResponsiblePerson" required>
+                            <option value="">-- Select --</option>
+                            <option value="Ben">Ben</option>
+                            <option value="Ricky">Ricky</option>
+                        </select>
+                        <small>Who is handling this lead?</small>
+                    </div>
+
+                    <div class="form-group">
                         <label for="pipelineCustomerName">Customer Name *</label>
                         <input type="text" id="pipelineCustomerName" required placeholder="e.g., Tunbury Primary School">
                     </div>
@@ -1789,6 +1799,21 @@
                     <div class="form-group">
                         <label for="pipelineNotes">Notes (Optional)</label>
                         <textarea id="pipelineNotes" placeholder="Any additional notes..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pipelineDeadlineType">Quote Deadline *</label>
+                        <select id="pipelineDeadlineType" required onchange="toggleCustomDeadlineDate()">
+                            <option value="1week" selected>1 Week</option>
+                            <option value="2weeks">2 Weeks</option>
+                            <option value="custom">Custom Date</option>
+                        </select>
+                        <small>Required - keeps you accountable for timely quotes</small>
+                    </div>
+
+                    <div class="form-group" id="customDeadlineContainer" style="display: none;">
+                        <label for="pipelineCustomDeadline">Custom Deadline Date *</label>
+                        <input type="date" id="pipelineCustomDeadline">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -3250,7 +3275,10 @@ This notification was generated automatically by Roundwood Route Manager.
             let reviewSection = '';
             
             if (stage === 'newLead') {
-                actions = `<button class="btn btn-small btn-primary" onclick="markAsQuoteSent('${job.id}')">Mark as Quote Sent</button>`;
+                actions = `
+                    <button class="btn btn-small btn-primary" onclick="markAsQuoteSent('${job.id}')">Mark as Quote Sent</button>
+                    <button class="btn btn-small btn-danger" onclick="deletePipelineJob('${job.id}')">🗑️ Delete</button>
+                `;
             } else if (stage === 'quoteSent') {
                 actions = `
                     <button class="btn btn-small btn-success" onclick="markAsApproved('${job.id}')">Mark as Approved</button>
@@ -3308,7 +3336,10 @@ This notification was generated automatically by Roundwood Route Manager.
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
                         <div>
                             <div style="font-weight: 600; font-size: 1rem; color: var(--gray-900);">${job.customerName}</div>
-                            <div style="color: var(--gray-500); font-size: 0.85rem;">Job #${job.jobReference}</div>
+                            <div style="color: var(--gray-500); font-size: 0.85rem;">
+                                Job #${job.jobReference}
+                                ${job.responsiblePerson ? `<span style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">👤 ${job.responsiblePerson}</span>` : ''}
+                            </div>
                         </div>
                         <div style="font-weight: 600; color: var(--primary);">${value}</div>
                     </div>
@@ -3316,6 +3347,14 @@ This notification was generated automatically by Roundwood Route Manager.
                     <div style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 1rem;">${job.jobDescription}</div>
                     ${job.customerPhone ? `<div style="color: var(--gray-500); font-size: 0.85rem; margin-bottom: 0.25rem;">📞 ${job.customerPhone}</div>` : ''}
                     ${job.customerEmail ? `<div style="color: var(--gray-500); font-size: 0.85rem; margin-bottom: 0.75rem;">📧 ${job.customerEmail}</div>` : ''}
+                    ${job.quoteDeadline ? `
+                        <div style="background: ${new Date(job.quoteDeadline) < new Date() ? '#fef3c7' : '#dbeafe'}; border: 1px solid ${new Date(job.quoteDeadline) < new Date() ? '#f59e0b' : '#3b82f6'}; border-radius: 6px; padding: 0.5rem; margin-bottom: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; color: ${new Date(job.quoteDeadline) < new Date() ? '#92400e' : '#1e40af'};">
+                                <span>⏰</span>
+                                <span style="font-size: 0.85rem; font-weight: 500;">Quote deadline: ${new Date(job.quoteDeadline).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            </div>
+                        </div>
+                    ` : ''}
                     <div style="display: flex; gap: 0.5rem;">
                         ${actions}
                     </div>
@@ -5141,70 +5180,126 @@ This notification was generated automatically by Roundwood Route Manager.
             }).join('');
         }
 
-        // Render Active Projects on Dashboard
+        // Render Active Projects on Dashboard (includes both old Projects AND Pipeline jobs in progress)
         function renderActiveProjects() {
-            const activeProjects = window.projects.filter(p => p.status !== 'completed');
-            
             const card = document.getElementById('activeProjectsCard');
             const container = document.getElementById('activeProjectsContent');
             const badge = document.getElementById('activeProjectsBadge');
             
             if (!card || !container) return;
             
-            if (activeProjects.length === 0) {
+            let allActiveItems = [];
+            
+            // Add old-style projects
+            if (window.projects) {
+                const activeProjects = window.projects.filter(p => p.status !== 'completed');
+                allActiveItems = allActiveItems.concat(activeProjects.map(p => ({ ...p, source: 'project' })));
+            }
+            
+            // Add pipeline jobs in progress
+            if (window.pipelineJobs) {
+                const inProgressJobs = window.pipelineJobs.filter(j => j.stage === 'inProgress');
+                allActiveItems = allActiveItems.concat(inProgressJobs.map(j => ({ ...j, source: 'pipeline' })));
+            }
+            
+            if (allActiveItems.length === 0) {
                 card.style.display = 'none';
                 return;
             }
             
             card.style.display = 'block';
-            if (badge) badge.textContent = activeProjects.length;
-            container.innerHTML = activeProjects.map(project => {
-                const startDate = new Date(project.startDate);
-                const endDate = new Date(project.expectedEnd);
-                const today = new Date();
-                const daysUntilStart = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));
-                const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-                
-                const statusInfo = {
-                    'not-started': {
-                        bg: '#fef3c7',
-                        text: '#92400e',
-                        label: daysUntilStart > 0 ? `Starts in ${daysUntilStart} day${daysUntilStart > 1 ? 's' : ''}` : 'Starts today',
-                        action: daysUntilStart <= 0 ? `<button class="btn btn-primary" onclick="startProject('${project.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">▶️ Start Project</button>` : ''
-                    },
-                    'in-progress': {
-                        bg: '#dbeafe',
-                        text: '#1e40af',
-                        label: daysUntilEnd > 0 ? `Due in ${daysUntilEnd} day${daysUntilEnd > 1 ? 's' : ''}` : 'Due today',
-                        action: `<button class="btn btn-success" onclick="openCompleteProjectModal('${project.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">✓ Complete</button>`
-                    }
-                };
-                
-                const status = statusInfo[project.status];
-                
-                return `
-                    <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid ${status.bg};">
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: #1f2937;">📐 ${project.projectName}</div>
-                                <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
-                                    ${project.projectType} • ${project.clientName}
+            if (badge) badge.textContent = allActiveItems.length;
+            
+            container.innerHTML = allActiveItems.map(item => {
+                if (item.source === 'project') {
+                    // Old-style project display
+                    const startDate = new Date(item.startDate);
+                    const endDate = new Date(item.expectedEnd);
+                    const today = new Date();
+                    const daysUntilStart = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));
+                    const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    const statusInfo = {
+                        'not-started': {
+                            bg: '#fef3c7',
+                            text: '#92400e',
+                            label: daysUntilStart > 0 ? `Starts in ${daysUntilStart} day${daysUntilStart > 1 ? 's' : ''}` : 'Starts today',
+                            action: daysUntilStart <= 0 ? `<button class="btn btn-primary" onclick="startProject('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">▶️ Start Project</button>` : ''
+                        },
+                        'in-progress': {
+                            bg: '#dbeafe',
+                            text: '#1e40af',
+                            label: daysUntilEnd > 0 ? `Due in ${daysUntilEnd} day${daysUntilEnd > 1 ? 's' : ''}` : 'Due today',
+                            action: `<button class="btn btn-success" onclick="openCompleteProjectModal('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">✓ Complete</button>`
+                        }
+                    };
+                    
+                    const status = statusInfo[item.status];
+                    
+                    return `
+                        <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid ${status.bg};">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: #1f2937;">📐 ${item.projectName}</div>
+                                    <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                                        ${item.projectType} • ${item.clientName}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: ${status.text}; margin-top: 0.375rem; font-weight: 500;">
+                                        ${status.label}
+                                    </div>
                                 </div>
-                                <div style="font-size: 0.85rem; color: ${status.text}; margin-top: 0.375rem; font-weight: 500;">
-                                    ${status.label}
+                                <div>
+                                    ${status.action}
                                 </div>
                             </div>
-                            <div>
-                                ${status.action}
+                            <div style="font-size: 0.85rem; color: #9ca3af; margin-top: 0.5rem;">
+                                ${startDate.toLocaleDateString('en-GB')} → ${endDate.toLocaleDateString('en-GB')} • £${item.price.toFixed(2)}
                             </div>
                         </div>
-                        <div style="font-size: 0.85rem; color: #9ca3af; margin-top: 0.5rem;">
-                            ${startDate.toLocaleDateString('en-GB')} → ${endDate.toLocaleDateString('en-GB')} • £${project.price.toFixed(2)}
+                    `;
+                } else {
+                    // Pipeline job display
+                    return `
+                        <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid #8b5cf6;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: #1f2937;">
+                                        🎯 ${item.customerName}
+                                        ${item.responsiblePerson ? `<span style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600; margin-left: 0.5rem;">👤 ${item.responsiblePerson}</span>` : ''}
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                                        ${item.projectType} • ${item.jobDescription}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: #7c3aed; margin-top: 0.375rem; font-weight: 500;">
+                                        Work in Progress (Job #${item.jobReference})
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-success" onclick="switchToPipeline('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">View in Pipeline</button>
+                                </div>
+                            </div>
+                            ${item.estimatedValue ? `<div style="font-size: 0.85rem; color: #9ca3af; margin-top: 0.5rem;">Est. Value: £${item.estimatedValue.toFixed(2)}</div>` : ''}
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             }).join('');
         }
+
+        // Switch to pipeline tab and highlight specific job
+        window.switchToPipeline = function(jobId) {
+            // Switch to pipeline tab
+            document.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            
+            const pipelineLink = document.querySelector('[onclick="switchTab(\'pipeline\')"]');
+            const pipelinePane = document.getElementById('pipeline');
+            
+            if (pipelineLink) pipelineLink.classList.add('active');
+            if (pipelinePane) pipelinePane.classList.add('active');
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        };
 
         // Render Visit Reminders
         function renderVisitReminders() {
@@ -5920,6 +6015,26 @@ Roundwood Solutions Limited
         window.closeAddPipelineJobModal = function() {
             document.getElementById('addPipelineJobModal')?.classList.remove('active');
             document.getElementById('addPipelineJobForm')?.reset();
+            // Hide custom deadline field when modal closes
+            document.getElementById('customDeadlineContainer').style.display = 'none';
+            // Reset to default 1 week option
+            document.getElementById('pipelineDeadlineType').value = '1week';
+        };
+
+        // Toggle custom deadline date field
+        window.toggleCustomDeadlineDate = function() {
+            const deadlineType = document.getElementById('pipelineDeadlineType').value;
+            const customContainer = document.getElementById('customDeadlineContainer');
+            const customDateInput = document.getElementById('pipelineCustomDeadline');
+            
+            if (deadlineType === 'custom') {
+                customContainer.style.display = 'block';
+                customDateInput.required = true;  // Make required when custom selected
+            } else {
+                customContainer.style.display = 'none';
+                customDateInput.required = false; // Not required for other options
+                customDateInput.value = ''; // Clear value
+            }
         };
 
         // Request review for a paid job
@@ -6112,6 +6227,33 @@ Roundwood Solutions Limited
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error updating job');
+            }
+        };
+        
+        window.deletePipelineJob = async function(jobId) {
+            const job = window.pipelineJobs.find(j => j.id === jobId);
+            if (!job) {
+                alert('Job not found');
+                return;
+            }
+            
+            if (!confirm(`Delete lead for "${job.customerName}"?\n\nJob #${job.jobReference}\n${job.projectType}\n\nThis action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const userId = window.currentUser.uid;
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbRemove(jobRef);
+                
+                alert('✅ Lead deleted successfully');
+                
+                // Refresh pipeline
+                if (typeof renderPipeline === 'function') renderPipeline();
+                
+            } catch (error) {
+                console.error('Error deleting job:', error);
+                alert('Error deleting lead. Please try again.');
             }
         };
         
@@ -6442,8 +6584,25 @@ Roundwood Solutions Limited
                     const jobRef = window.dbPush(window.dbRef(window.database, `users/${userId}/pipelineJobs`));
                     const nextRef = await getNextJobReference();
                     
+                    // Calculate deadline
+                    let deadlineDate = null;
+                    const deadlineType = document.getElementById('pipelineDeadlineType').value;
+                    
+                    if (deadlineType === '1week') {
+                        const deadline = new Date();
+                        deadline.setDate(deadline.getDate() + 7);
+                        deadlineDate = deadline.toISOString().split('T')[0];
+                    } else if (deadlineType === '2weeks') {
+                        const deadline = new Date();
+                        deadline.setDate(deadline.getDate() + 14);
+                        deadlineDate = deadline.toISOString().split('T')[0];
+                    } else if (deadlineType === 'custom') {
+                        deadlineDate = document.getElementById('pipelineCustomDeadline').value;
+                    }
+                    
                     const jobData = {
                         jobReference: nextRef.toString(),
+                        responsiblePerson: document.getElementById('pipelineResponsiblePerson').value,
                         customerName: document.getElementById('pipelineCustomerName').value,
                         customerPhone: document.getElementById('pipelineCustomerPhone').value,
                         customerEmail: document.getElementById('pipelineCustomerEmail').value,
@@ -6451,6 +6610,7 @@ Roundwood Solutions Limited
                         projectType: document.getElementById('pipelineProjectType').value,
                         estimatedValue: parseFloat(document.getElementById('pipelineEstimatedValue').value) || null,
                         notes: document.getElementById('pipelineNotes').value,
+                        quoteDeadline: deadlineDate,
                         stage: 'newLead',
                         createdAt: new Date().toISOString()
                     };
