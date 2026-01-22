@@ -1469,23 +1469,6 @@
                     </div>
                 </div>
 
-                <!-- Next Due Visits (Collapsible) -->
-                <div class="collapsible-section open">
-                    <div class="collapsible-header" onclick="toggleSection(this)" style="background: var(--primary); color: white;">
-                        <div class="collapsible-title">
-                            <span>📅 Next 7 Days</span>
-                            <span class="collapsible-badge" id="nextSevenBadge">0</span>
-                        </div>
-                        <span class="collapsible-arrow">▼</span>
-                    </div>
-                    <div class="collapsible-content">
-                        <div class="collapsible-inner">
-                            <p class="section-description" style="color: var(--gray-600);">Upcoming visits and projects in the next week:</p>
-                            <div id="nextVisits"></div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Calendar View (Collapsible) -->
                 <div class="collapsible-section open">
                     <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); color: #0c4a6e;">
@@ -2013,6 +1996,11 @@
                             <label for="pipelineEstimatedValue">Estimated Value (£)</label>
                             <input type="number" id="pipelineEstimatedValue" placeholder="0.00" step="0.01">
                             <small>Optional - helps prioritize</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="pipelineEstimatedEndDate">Estimated End Date</label>
+                            <input type="date" id="pipelineEstimatedEndDate">
+                            <small>Optional - shows project duration on calendar</small>
                         </div>
                     </div>
 
@@ -2667,9 +2655,16 @@
                     <input type="text" id="eventTitle" required placeholder="e.g. Ben's Holiday, Christmas Day, Training">
                 </div>
                 
-                <div class="form-group">
-                    <label for="eventDate">Date *</label>
-                    <input type="date" id="eventDate" required>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="eventStartDate">Start Date *</label>
+                        <input type="date" id="eventStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventEndDate">End Date *</label>
+                        <input type="date" id="eventEndDate" required>
+                        <small>Same as start for single day</small>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -2690,6 +2685,154 @@
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-secondary" onclick="closeAddEventModal()" style="flex: 1;">Cancel</button>
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Add Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Event Modal -->
+    <div id="editEventModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">✏️ Edit Event</h2>
+                <button class="btn-close" onclick="closeEditEventModal()">×</button>
+            </div>
+            
+            <form id="editEventForm">
+                <input type="hidden" id="editEventId">
+                
+                <div class="form-group">
+                    <label for="editEventTitle">Event Title *</label>
+                    <input type="text" id="editEventTitle" required>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="editEventStartDate">Start Date *</label>
+                        <input type="date" id="editEventStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editEventEndDate">End Date *</label>
+                        <input type="date" id="editEventEndDate" required>
+                        <small>Same as start for single day</small>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editEventType">Event Type *</label>
+                    <select id="editEventType" required>
+                        <option value="holiday">🏖️ Holiday / Time Off</option>
+                        <option value="bankholiday">🎄 Bank Holiday</option>
+                        <option value="office">🏢 Office Event</option>
+                        <option value="reminder">ℹ️ Reminder</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editEventNotes">Notes</label>
+                    <textarea id="editEventNotes" rows="2"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-danger" onclick="deleteEvent()" style="flex: 0.5;">🗑️ Delete</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditEventModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Pipeline Job Modal -->
+    <div id="editPipelineJobModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">✏️ Edit Pipeline Job</h2>
+                <button class="btn-close" onclick="closeEditPipelineJobModal()">×</button>
+            </div>
+            
+            <form id="editPipelineJobForm">
+                <input type="hidden" id="editPipelineJobId">
+                <input type="hidden" id="editPipelineJobStage">
+                
+                <div class="form-group">
+                    <label for="editPipelineCustomerName">Customer Name *</label>
+                    <input type="text" id="editPipelineCustomerName" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="editPipelineCustomerPhone">Customer Phone</label>
+                        <input type="tel" id="editPipelineCustomerPhone" placeholder="e.g., 01234 567890">
+                    </div>
+                    <div class="form-group">
+                        <label for="editPipelineCustomerEmail">Customer Email</label>
+                        <input type="email" id="editPipelineCustomerEmail" placeholder="e.g., customer@email.com">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="editPipelineResponsiblePerson">Responsible Person</label>
+                    <select id="editPipelineResponsiblePerson">
+                        <option value="">Not assigned</option>
+                        <option value="Ben">Ben</option>
+                        <option value="Ricky">Ricky</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editPipelineJobDescription">Job Description *</label>
+                    <textarea id="editPipelineJobDescription" required placeholder="e.g., Install new fencing around playground"></textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="editPipelineProjectType">Project Type *</label>
+                        <select id="editPipelineProjectType" required>
+                            <option value="">Select type...</option>
+                            <option>Landscaping</option>
+                            <option>Fencing</option>
+                            <option>Decking</option>
+                            <option>Paving</option>
+                            <option>Weed Control</option>
+                            <option>Tree Work</option>
+                            <option>Maintenance Contract</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPipelineEstimatedValue">Estimated Value (£)</label>
+                        <input type="number" id="editPipelineEstimatedValue" placeholder="0.00" step="0.01">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <!-- Quote Deadline - shown for New Lead & Quote Sent stages -->
+                    <div class="form-group" id="editQuoteDeadlineField">
+                        <label for="editPipelineQuoteDeadline">Quote Deadline</label>
+                        <input type="date" id="editPipelineQuoteDeadline">
+                        <small>When you need to send quote by</small>
+                    </div>
+                    <!-- Start Date - shown for Approved onwards -->
+                    <div class="form-group" id="editStartDateField" style="display: none;">
+                        <label for="editPipelineStartDate">Start Date</label>
+                        <input type="date" id="editPipelineStartDate">
+                        <small>When work started/will start</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPipelineEstimatedEndDate">Estimated End Date</label>
+                        <input type="date" id="editPipelineEstimatedEndDate">
+                        <small>For multi-day projects</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="editPipelineNotes">Notes</label>
+                    <textarea id="editPipelineNotes" placeholder="Any additional notes..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditPipelineJobModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -3603,35 +3746,44 @@ This notification was generated automatically by Roundwood Route Manager.
             if (stage === 'newLead') {
                 actions = `
                     <button class="btn btn-small btn-primary" onclick="markAsQuoteSent('${job.id}')">Mark as Quote Sent</button>
+                    <button class="btn btn-small" onclick="editPipelineJob('${job.id}')" style="background: #f3f4f6; color: #374151;">✏️ Edit</button>
                     <button class="btn btn-small btn-danger" onclick="deletePipelineJob('${job.id}')">🗑️ Delete</button>
                 `;
             } else if (stage === 'quoteSent') {
                 actions = `
                     <button class="btn btn-small btn-success" onclick="markAsApproved('${job.id}')">Mark as Approved</button>
+                    <button class="btn btn-small" onclick="editPipelineJob('${job.id}')" style="background: #f3f4f6; color: #374151;">✏️ Edit</button>
                     <button class="btn btn-small btn-secondary" onclick="moveBackToNewLead('${job.id}')">← Move Back to New Leads</button>
                 `;
             } else if (stage === 'approved') {
                 actions = `
                     <button class="btn btn-small btn-primary" onclick="scheduleWork('${job.id}')">Schedule Work</button>
+                    <button class="btn btn-small" onclick="editPipelineJob('${job.id}')" style="background: #f3f4f6; color: #374151;">✏️ Edit</button>
                     <button class="btn btn-small btn-secondary" onclick="moveBackToQuoteSent('${job.id}')">← Move Back to Quote Sent</button>
                 `;
             } else if (stage === 'inProgress') {
                 actions = `
                     <button class="btn btn-small btn-success" onclick="markAsComplete('${job.id}')">Mark Complete</button>
+                    <button class="btn btn-small" onclick="editPipelineJob('${job.id}')" style="background: #f3f4f6; color: #374151;">✏️ Edit</button>
                     <button class="btn btn-small btn-secondary" onclick="moveBackToApproved('${job.id}')">← Move Back to Approved</button>
                 `;
             } else if (stage === 'complete') {
                 actions = `
                     <button class="btn btn-small btn-primary" onclick="sendInvoice('${job.id}')">Send Invoice</button>
+                    <button class="btn btn-small" onclick="editPipelineJob('${job.id}')" style="background: #f3f4f6; color: #374151;">✏️ Edit</button>
                     <button class="btn btn-small btn-secondary" onclick="moveBackToInProgress('${job.id}')">← Move Back to In Progress</button>
                 `;
             } else if (stage === 'invoiced') {
                 actions = `
                     <button class="btn btn-small btn-success" onclick="markAsPaid('${job.id}')">Mark as Paid</button>
+                    <button class="btn btn-small" onclick="editPipelineJob('${job.id}')" style="background: #f3f4f6; color: #374151;">✏️ Edit</button>
                     <button class="btn btn-small btn-secondary" onclick="moveBackToComplete('${job.id}')">← Move Back to Complete</button>
                 `;
             } else if (stage === 'paid') {
-                actions = `<button class="btn btn-small btn-secondary" onclick="moveBackToInvoiced('${job.id}')">← Move Back to Invoiced</button>`;
+                actions = `
+                    <button class="btn btn-small" onclick="editPipelineJob('${job.id}')" style="background: #f3f4f6; color: #374151;">✏️ Edit</button>
+                    <button class="btn btn-small btn-secondary" onclick="moveBackToInvoiced('${job.id}')">← Move Back to Invoiced</button>
+                `;
                 // For paid jobs, show review request status
                 if (job.reviewRequested) {
                     reviewSection = `
@@ -5849,186 +6001,6 @@ Roundwood Solutions Limited
         };
 
         // Render Next Due Visits (Next 7 days + Overdue)
-        function renderNextVisits() {
-            const container = document.getElementById('nextVisits');
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-            const sevenDaysFromNow = new Date(today);
-            sevenDaysFromNow.setDate(today.getDate() + 7);
-            
-            // Get overdue visits (only visits BEFORE today, not today)
-            const overdueVisits = visits
-                .filter(v => {
-                    if (v.status !== 'pending' || v.hidden) return false;
-                    return v.scheduledDate < todayStr; // String comparison: earlier dates are "less than"
-                })
-                .map(v => ({ ...v, type: 'visit', date: v.scheduledDate }))
-                .sort((a, b) => new Date(a.date) - new Date(b.date));
-            
-            // Get next 7 days visits
-            const upcomingVisits = visits
-                .filter(v => {
-                    if (v.status !== 'pending' || v.hidden) return false;
-                    const visitDate = new Date(v.scheduledDate);
-                    return visitDate >= today && visitDate <= sevenDaysFromNow;
-                })
-                .map(v => ({ ...v, type: 'visit', date: v.scheduledDate }));
-
-            // Get projects starting in next 7 days (not started or in progress)
-            const upcomingProjects = projects
-                .filter(p => {
-                    if (p.status === 'completed') return false;
-                    const projectStartDate = new Date(p.startDate);
-                    projectStartDate.setHours(0, 0, 0, 0);
-                    const todayStart = new Date(today);
-                    todayStart.setHours(0, 0, 0, 0);
-                    return projectStartDate >= todayStart && projectStartDate <= sevenDaysFromNow;
-                })
-                .map(p => ({ ...p, type: 'project', date: p.startDate }));
-
-            // Combine and sort by date
-            const allItems = [...overdueVisits, ...upcomingVisits, ...upcomingProjects]
-                .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            if (allItems.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📅</div>
-                        <div class="empty-state-text">No overdue or upcoming visits/projects in the next 7 days</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '';
-            
-            // Render overdue section if there are overdue visits
-            if (overdueVisits.length > 0) {
-                html += `
-                    <div style="background: #fee2e2; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--danger); margin-bottom: 1.5rem;">
-                        <h3 style="color: #991b1b; margin-bottom: 0.5rem; font-size: 1.125rem;">⚠️ Overdue Visits (${overdueVisits.length})</h3>
-                        <p style="color: #7f1d1d; font-size: 0.9rem;">These visits are past their scheduled date and need immediate attention.</p>
-                    </div>
-                `;
-                
-                html += overdueVisits.map(visit => {
-                    const visitDate = new Date(visit.scheduledDate);
-                    const formattedDate = visitDate.toLocaleDateString('en-GB', { 
-                        weekday: 'short', 
-                        day: 'numeric', 
-                        month: 'short', 
-                        year: 'numeric' 
-                    });
-                    
-                    const daysOverdue = Math.floor((today - visitDate) / (1000 * 60 * 60 * 24));
-
-                    return `
-                        <div class="visit-card overdue">
-                            <div class="visit-header">
-                                <div>
-                                    <div class="visit-site">${visit.siteName}</div>
-                                    <div class="visit-date">${formattedDate} - ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue</div>
-                                    <div class="site-address" style="margin-top: 0.5rem;">${visit.siteAddress}</div>
-                                </div>
-                                <span class="visit-status status-overdue">
-                                    Overdue
-                                </span>
-                            </div>
-                            <div class="visit-actions">
-                                <button class="btn btn-success" onclick="openCompleteVisitModal('${visit.id}')" style="flex: 1;">
-                                    ✓ Complete Visit
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-            
-            // Render upcoming section (visits and projects combined)
-            const upcomingItems = allItems.filter(item => {
-                const itemDate = new Date(item.date);
-                itemDate.setHours(0, 0, 0, 0);
-                const todayStart = new Date(today);
-                todayStart.setHours(0, 0, 0, 0);
-                return itemDate >= todayStart;
-            });
-            if (upcomingItems.length > 0) {
-                if (overdueVisits.length > 0) {
-                    html += `
-                        <div style="background: #dbeafe; padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 1.5rem 0;">
-                            <h3 style="color: #1e40af; margin-bottom: 0.5rem; font-size: 1.125rem;">📅 Upcoming (Next 7 Days)</h3>
-                        </div>
-                    `;
-                }
-                
-                html += upcomingItems.map(item => {
-                    const itemDate = new Date(item.date);
-                    const isToday = item.date === todayStr;
-                    const formattedDate = itemDate.toLocaleDateString('en-GB', { 
-                        weekday: 'short', 
-                        day: 'numeric', 
-                        month: 'short', 
-                        year: 'numeric' 
-                    });
-
-                    if (item.type === 'project') {
-                        // Render project card
-                        const statusLabel = item.status === 'not-started' ? 'Starting' : 'In Progress';
-                        return `
-                            <div class="visit-card" style="border-left-color: #8b5cf6;">
-                                <div class="visit-header">
-                                    <div>
-                                        <div class="visit-site">📐 ${item.projectName}</div>
-                                        <div class="visit-date">${formattedDate} • ${item.projectType}</div>
-                                        <div class="site-address" style="margin-top: 0.5rem;">${item.clientName} - ${item.address}</div>
-                                    </div>
-                                    <span class="visit-status" style="background: #ede9fe; color: #6b21a8;">
-                                        ${statusLabel}
-                                    </span>
-                                </div>
-                                ${item.status === 'not-started' && isToday ? `
-                                    <div class="visit-actions">
-                                        <button class="btn btn-primary" onclick="startProject('${item.id}')" style="flex: 1;">
-                                            ▶️ Start Project
-                                        </button>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-                    } else {
-                        // Render visit card
-                        return `
-                            <div class="visit-card">
-                                <div class="visit-header">
-                                    <div>
-                                        <div class="visit-site">${item.siteName}</div>
-                                        <div class="visit-date">${formattedDate}</div>
-                                        <div class="site-address" style="margin-top: 0.5rem;">${item.siteAddress}</div>
-                                    </div>
-                                    <span class="visit-status ${isToday ? 'status-pending' : 'status-pending'}" style="${isToday ? 'background: #fef3c7; color: #92400e;' : ''}">
-                                        ${isToday ? 'Today' : formattedDate.split(',')[0]}
-                                    </span>
-                                </div>
-                                ${isToday ? `
-                                    <div class="visit-actions">
-                                        <button class="btn btn-success" onclick="openCompleteVisitModal('${item.id}')" style="flex: 1;">
-                                            ✓ Complete Visit
-                                        </button>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-                    }
-                }).join('');
-            }
-            
-            container.innerHTML = html;
-            
-            // Update badge count
-            const badge = document.getElementById('nextSevenBadge');
-            if (badge) badge.textContent = allItems.length;
-        }
-
         // Update Stats
         function updateStats() {
             const today = new Date().toISOString().split('T')[0];
@@ -6119,7 +6091,6 @@ Roundwood Solutions Limited
             if (typeof renderActiveProjects === 'function') renderActiveProjects();
             if (typeof renderDueToday === 'function') renderDueToday();
             if (typeof renderVisitReminders === 'function') renderVisitReminders();
-            if (typeof renderNextVisits === 'function') renderNextVisits();
             if (typeof renderCalendar === 'function') renderCalendar();
         }
 
@@ -6211,7 +6182,8 @@ Roundwood Solutions Limited
                 
                 // Events
                 events.forEach(event => {
-                    html += `<div class="calendar-event ${event.type}">${event.icon} ${event.title}</div>`;
+                    const clickHandler = event.isCalendarEvent ? `onclick="editCalendarEvent('${event.id}')" style="cursor: pointer;"` : '';
+                    html += `<div class="calendar-event ${event.type}" ${clickHandler}>${event.icon} ${event.title}</div>`;
                 });
                 
                 html += '</div>';
@@ -6240,6 +6212,15 @@ Roundwood Solutions Limited
             if (window.visits) {
                 window.visits.forEach(visit => {
                     if (visit.scheduledDate === dateStr && visit.status !== 'completed') {
+                        // Skip if visit itself is paused
+                        if (visit.paused === true) return;
+                        
+                        // Skip if parent site is paused
+                        if (window.sites && visit.siteId) {
+                            const parentSite = window.sites.find(s => s.id === visit.siteId);
+                            if (parentSite && parentSite.paused === true) return;
+                        }
+                        
                         const isOverdue = date < today;
                         events.push({
                             type: visit.pipelineJobId ? 'project' : (isOverdue ? 'overdue' : 'maintenance'),
@@ -6253,7 +6234,12 @@ Roundwood Solutions Limited
             // Get calendar events/holidays
             if (window.calendarEvents) {
                 window.calendarEvents.forEach(event => {
-                    if (event.date === dateStr) {
+                    // Handle both old single-date events and new date-range events
+                    const eventStartDate = event.startDate || event.date;
+                    const eventEndDate = event.endDate || event.date;
+                    
+                    // Check if current date is within event range
+                    if (eventStartDate && eventEndDate && dateStr >= eventStartDate && dateStr <= eventEndDate) {
                         let icon = '🏖️';
                         let type = 'holiday';
                         
@@ -6275,6 +6261,32 @@ Roundwood Solutions Limited
                             id: event.id,
                             isCalendarEvent: true
                         });
+                    }
+                });
+            }
+            
+            // Get project durations from pipeline jobs with scheduled work
+            if (window.pipelineJobs && window.visits) {
+                window.pipelineJobs.forEach(job => {
+                    // Find if this job has a scheduled visit
+                    const jobVisit = window.visits.find(v => v.pipelineJobId === job.id && v.status !== 'completed');
+                    
+                    if (jobVisit && job.estimatedEndDate) {
+                        const startDate = jobVisit.scheduledDate;
+                        const endDate = job.estimatedEndDate;
+                        
+                        // Check if current date is within project duration
+                        if (dateStr >= startDate && dateStr <= endDate) {
+                            // Don't duplicate if already added as a visit
+                            const alreadyAdded = events.some(e => e.title === (job.customerName || 'Project'));
+                            if (!alreadyAdded) {
+                                events.push({
+                                    type: 'project',
+                                    icon: '🎯',
+                                    title: job.customerName || 'Project'
+                                });
+                            }
+                        }
                     }
                 });
             }
@@ -6302,8 +6314,10 @@ Roundwood Solutions Limited
         // Open/Close Event Modal
         window.openAddEventModal = function() {
             document.getElementById('addEventModal').classList.add('active');
-            // Set default date to today
-            document.getElementById('eventDate').valueAsDate = new Date();
+            // Set default dates to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('eventStartDate').value = today;
+            document.getElementById('eventEndDate').value = today;
         };
 
         window.closeAddEventModal = function() {
@@ -6316,24 +6330,35 @@ Roundwood Solutions Limited
             e.preventDefault();
             
             const title = document.getElementById('eventTitle').value;
-            const date = document.getElementById('eventDate').value;
+            const startDate = document.getElementById('eventStartDate').value;
+            const endDate = document.getElementById('eventEndDate').value;
             const type = document.getElementById('eventType').value;
             const notes = document.getElementById('eventNotes').value;
+            
+            // Validate dates
+            if (new Date(endDate) < new Date(startDate)) {
+                alert('End date cannot be before start date!');
+                return;
+            }
             
             try {
                 const userId = window.currentUser.uid;
                 const eventsRef = window.dbRef(window.database, `users/${userId}/calendarEvents`);
+                
+                // Create a single event with start and end dates
                 const newEventRef = window.dbPush(eventsRef);
                 
                 await window.dbSet(newEventRef, {
                     title: title,
-                    date: date,
+                    startDate: startDate,
+                    endDate: endDate,
                     type: type,
                     notes: notes,
                     createdAt: new Date().toISOString()
                 });
                 
-                alert('✅ Event added to calendar!');
+                const dayCount = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+                alert(`✅ Event "${title}" added to calendar!\n${dayCount} day${dayCount > 1 ? 's' : ''}: ${new Date(startDate).toLocaleDateString('en-GB')} - ${new Date(endDate).toLocaleDateString('en-GB')}`);
                 closeAddEventModal();
                 
             } catch (error) {
@@ -6342,15 +6367,81 @@ Roundwood Solutions Limited
             }
         });
 
+        // Edit Event Functions
+        window.editCalendarEvent = function(eventId) {
+            const event = window.calendarEvents.find(e => e.id === eventId);
+            if (!event) {
+                alert('Event not found');
+                return;
+            }
+            
+            // Populate edit form
+            document.getElementById('editEventId').value = eventId;
+            document.getElementById('editEventTitle').value = event.title || '';
+            document.getElementById('editEventStartDate').value = event.startDate || event.date || '';
+            document.getElementById('editEventEndDate').value = event.endDate || event.date || '';
+            document.getElementById('editEventType').value = event.type || 'holiday';
+            document.getElementById('editEventNotes').value = event.notes || '';
+            
+            // Open edit modal
+            document.getElementById('editEventModal').classList.add('active');
+        };
+        
+        window.closeEditEventModal = function() {
+            document.getElementById('editEventModal').classList.remove('active');
+            document.getElementById('editEventForm').reset();
+        };
+        
+        // Handle Edit Event Form
+        document.getElementById('editEventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const eventId = document.getElementById('editEventId').value;
+            const title = document.getElementById('editEventTitle').value;
+            const startDate = document.getElementById('editEventStartDate').value;
+            const endDate = document.getElementById('editEventEndDate').value;
+            const type = document.getElementById('editEventType').value;
+            const notes = document.getElementById('editEventNotes').value;
+            
+            // Validate dates
+            if (new Date(endDate) < new Date(startDate)) {
+                alert('End date cannot be before start date!');
+                return;
+            }
+            
+            try {
+                const userId = window.currentUser.uid;
+                const eventRef = window.dbRef(window.database, `users/${userId}/calendarEvents/${eventId}`);
+                
+                await window.dbUpdate(eventRef, {
+                    title: title,
+                    startDate: startDate,
+                    endDate: endDate,
+                    type: type,
+                    notes: notes
+                });
+                
+                alert('✅ Event updated successfully!');
+                closeEditEventModal();
+                
+            } catch (error) {
+                console.error('Error updating event:', error);
+                alert('Error updating event');
+            }
+        });
+        
         // Delete Event
-        window.deleteCalendarEvent = async function(eventId) {
+        window.deleteEvent = async function() {
+            const eventId = document.getElementById('editEventId').value;
+            
             if (!confirm('Delete this event?')) return;
             
             try {
                 const userId = window.currentUser.uid;
                 const eventRef = window.dbRef(window.database, `users/${userId}/calendarEvents/${eventId}`);
                 await window.dbRemove(eventRef);
-                alert('Event deleted');
+                alert('✅ Event deleted');
+                closeEditEventModal();
             } catch (error) {
                 console.error('Error deleting event:', error);
                 alert('Error deleting event');
@@ -6995,6 +7086,115 @@ Roundwood Solutions Limited
             }
         };
         
+        // Edit Pipeline Job Functions
+        window.editPipelineJob = function(jobId) {
+            const job = window.pipelineJobs.find(j => j.id === jobId);
+            if (!job) {
+                alert('Job not found');
+                return;
+            }
+            
+            // Populate form fields
+            document.getElementById('editPipelineJobId').value = jobId;
+            document.getElementById('editPipelineJobStage').value = job.stage;
+            document.getElementById('editPipelineCustomerName').value = job.customerName || '';
+            document.getElementById('editPipelineCustomerPhone').value = job.customerPhone || '';
+            document.getElementById('editPipelineCustomerEmail').value = job.customerEmail || '';
+            document.getElementById('editPipelineResponsiblePerson').value = job.responsiblePerson || '';
+            document.getElementById('editPipelineJobDescription').value = job.jobDescription || '';
+            document.getElementById('editPipelineProjectType').value = job.projectType || '';
+            document.getElementById('editPipelineEstimatedValue').value = job.estimatedValue || '';
+            document.getElementById('editPipelineEstimatedEndDate').value = job.estimatedEndDate || '';
+            document.getElementById('editPipelineNotes').value = job.notes || '';
+            
+            // Show appropriate date field based on stage
+            const quoteDeadlineField = document.getElementById('editQuoteDeadlineField');
+            const startDateField = document.getElementById('editStartDateField');
+            
+            if (job.stage === 'newLead' || job.stage === 'quoteSent') {
+                // Early stages: Show Quote Deadline
+                quoteDeadlineField.style.display = 'block';
+                startDateField.style.display = 'none';
+                document.getElementById('editPipelineQuoteDeadline').value = job.quoteDeadline || '';
+            } else {
+                // Later stages: Show Start Date (from linked visit)
+                quoteDeadlineField.style.display = 'none';
+                startDateField.style.display = 'block';
+                
+                // Get start date from linked visit
+                if (job.visitId && window.visits) {
+                    const linkedVisit = window.visits.find(v => v.id === job.visitId);
+                    if (linkedVisit) {
+                        document.getElementById('editPipelineStartDate').value = linkedVisit.scheduledDate || '';
+                    }
+                }
+            }
+            
+            // Open modal
+            document.getElementById('editPipelineJobModal').classList.add('active');
+        };
+        
+        window.closeEditPipelineJobModal = function() {
+            document.getElementById('editPipelineJobModal').classList.remove('active');
+            document.getElementById('editPipelineJobForm').reset();
+        };
+        
+        // Handle Edit Pipeline Job Form Submission
+        document.getElementById('editPipelineJobForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const jobId = document.getElementById('editPipelineJobId').value;
+            const jobStage = document.getElementById('editPipelineJobStage').value;
+            
+            try {
+                const userId = window.currentUser.uid;
+                const job = window.pipelineJobs.find(j => j.id === jobId);
+                
+                // Build updated data for pipeline job
+                const updatedData = {
+                    customerName: document.getElementById('editPipelineCustomerName').value,
+                    customerPhone: document.getElementById('editPipelineCustomerPhone').value,
+                    customerEmail: document.getElementById('editPipelineCustomerEmail').value,
+                    responsiblePerson: document.getElementById('editPipelineResponsiblePerson').value,
+                    jobDescription: document.getElementById('editPipelineJobDescription').value,
+                    projectType: document.getElementById('editPipelineProjectType').value,
+                    estimatedValue: parseFloat(document.getElementById('editPipelineEstimatedValue').value) || null,
+                    estimatedEndDate: document.getElementById('editPipelineEstimatedEndDate').value || null,
+                    notes: document.getElementById('editPipelineNotes').value
+                };
+                
+                // Add appropriate date field based on stage
+                if (jobStage === 'newLead' || jobStage === 'quoteSent') {
+                    // Early stages: Save quote deadline
+                    updatedData.quoteDeadline = document.getElementById('editPipelineQuoteDeadline').value || null;
+                } else {
+                    // Later stages: Update linked visit's start date
+                    const newStartDate = document.getElementById('editPipelineStartDate').value;
+                    if (newStartDate && job.visitId) {
+                        const visitRef = window.dbRef(window.database, `users/${userId}/visits/${job.visitId}`);
+                        await window.dbUpdate(visitRef, {
+                            scheduledDate: newStartDate
+                        });
+                    }
+                }
+                
+                // Update pipeline job
+                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                await window.dbUpdate(jobRef, updatedData);
+                
+                alert('✅ Job updated successfully!');
+                closeEditPipelineJobModal();
+                
+                // Refresh pipeline and calendar
+                if (typeof renderPipeline === 'function') renderPipeline();
+                if (typeof renderCalendar === 'function') renderCalendar();
+                
+            } catch (error) {
+                console.error('Error updating job:', error);
+                alert('Error updating job. Please try again.');
+            }
+        });
+        
         window.markAsApproved = async function(jobId) {
             try {
                 const userId = window.currentUser.uid;
@@ -7347,6 +7547,7 @@ Roundwood Solutions Limited
                         jobDescription: document.getElementById('pipelineJobDescription').value,
                         projectType: document.getElementById('pipelineProjectType').value,
                         estimatedValue: parseFloat(document.getElementById('pipelineEstimatedValue').value) || null,
+                        estimatedEndDate: document.getElementById('pipelineEstimatedEndDate').value || null,
                         notes: document.getElementById('pipelineNotes').value,
                         quoteDeadline: deadlineDate,
                         stage: 'newLead',
