@@ -930,6 +930,20 @@
 
         .collapsible-section.open .collapsible-content {
             max-height: 2000px;
+            overflow: visible;
+        }
+
+        /* Mobile: Allow scrolling within collapsible sections */
+        @media (max-width: 768px) {
+            .collapsible-section.open .collapsible-content {
+                max-height: calc(100vh - 200px);
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+            
+            .collapsible-inner {
+                padding: 1rem;
+            }
         }
 
         .collapsible-inner {
