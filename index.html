@@ -1085,7 +1085,7 @@
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin-top: 2rem;
-            overflow: hidden;
+            overflow: visible;
         }
 
         .calendar-header-bar {
@@ -1125,12 +1125,20 @@
             border-color: var(--gray-400);
         }
 
+        .calendar-grid-wrapper {
+            overflow-x: auto;
+            overflow-y: visible;
+            padding: 0 1px;
+        }
+
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 1px;
             background: var(--gray-200);
             border: 1px solid var(--gray-200);
+            min-width: 700px;
+            width: 100%;
         }
 
         .calendar-day-header {
@@ -6139,7 +6147,7 @@ Roundwood Solutions Limited
             }
             
             // Build calendar grid
-            let html = '<div class="calendar-grid">';
+            let html = '<div class="calendar-grid-wrapper"><div class="calendar-grid">';
             
             // Day headers
             const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -6198,7 +6206,7 @@ Roundwood Solutions Limited
                 }
             }
             
-            html += '</div>';
+            html += '</div></div>';
             
             document.getElementById('calendarContainer').innerHTML = html;
         }
