@@ -3098,86 +3098,105 @@
         window.loadAppData = async function() {
             if (!window.currentUser) return;
             
-            const userId = window.currentUser.uid;
-            console.log('Loading data for user:', userId);
-            
-            // Listen to sites
-            const sitesRef = window.dbRef(window.database, `users/${userId}/sites`);
-            window.dbOnValue(sitesRef, (snapshot) => {
+            console.log('Loading ALL data (shared across all users)');
+            // Everyone sees all data - simple team sharing
+            loadAllUsersData();
+        };
+        
+        // Load data from ALL users (everyone sees everything)
+        function loadAllUsersData() {
+            // Load ALL users' sites
+            const allUsersRef = window.dbRef(window.database, 'users');
+            window.dbOnValue(allUsersRef, (snapshot) => {
                 window.sites = [];
-                snapshot.forEach((childSnapshot) => {
-                    window.sites.push({
-                        id: childSnapshot.key,
-                        ...childSnapshot.val()
-                    });
-                });
-                console.log('Loaded sites:', window.sites.length);
-                if (typeof renderSites === 'function') renderSites();
-                if (typeof updateStats === 'function') updateStats();
-            });
-
-            // Listen to visits
-            const visitsRef = window.dbRef(window.database, `users/${userId}/visits`);
-            window.dbOnValue(visitsRef, (snapshot) => {
                 window.visits = [];
-                snapshot.forEach((childSnapshot) => {
-                    window.visits.push({
-                        id: childSnapshot.key,
-                        ...childSnapshot.val()
-                    });
+                window.projects = [];
+                window.pipelineJobs = [];
+                window.calendarEvents = [];
+                
+                snapshot.forEach((userSnapshot) => {
+                    const userId = userSnapshot.key;
+                    
+                    // Sites
+                    const sitesData = userSnapshot.child('sites').val();
+                    if (sitesData) {
+                        Object.keys(sitesData).forEach(siteId => {
+                            window.sites.push({
+                                id: siteId,
+                                userId: userId,
+                                ...sitesData[siteId]
+                            });
+                        });
+                    }
+                    
+                    // Visits
+                    const visitsData = userSnapshot.child('visits').val();
+                    if (visitsData) {
+                        Object.keys(visitsData).forEach(visitId => {
+                            window.visits.push({
+                                id: visitId,
+                                userId: userId,
+                                ...visitsData[visitId]
+                            });
+                        });
+                    }
+                    
+                    // Projects
+                    const projectsData = userSnapshot.child('projects').val();
+                    if (projectsData) {
+                        Object.keys(projectsData).forEach(projectId => {
+                            window.projects.push({
+                                id: projectId,
+                                userId: userId,
+                                ...projectsData[projectId]
+                            });
+                        });
+                    }
+                    
+                    // Pipeline Jobs
+                    const pipelineData = userSnapshot.child('pipelineJobs').val();
+                    if (pipelineData) {
+                        Object.keys(pipelineData).forEach(jobId => {
+                            window.pipelineJobs.push({
+                                id: jobId,
+                                userId: userId,
+                                ...pipelineData[jobId]
+                            });
+                        });
+                    }
+                    
+                    // Calendar Events
+                    const eventsData = userSnapshot.child('calendarEvents').val();
+                    if (eventsData) {
+                        Object.keys(eventsData).forEach(eventId => {
+                            window.calendarEvents.push({
+                                id: eventId,
+                                userId: userId,
+                                ...eventsData[eventId]
+                            });
+                        });
+                    }
                 });
-                console.log('Loaded visits:', window.visits.length);
+                
+                console.log('Loaded ALL data (admin):', {
+                    sites: window.sites.length,
+                    visits: window.visits.length,
+                    projects: window.projects.length,
+                    pipelineJobs: window.pipelineJobs.length,
+                    calendarEvents: window.calendarEvents.length
+                });
+                
+                // Render everything
+                if (typeof renderSites === 'function') renderSites();
                 if (typeof renderVisits === 'function') renderVisits();
+                if (typeof renderProjects === 'function') renderProjects();
+                if (typeof renderPipeline === 'function') renderPipeline();
                 if (typeof renderInvoices === 'function') renderInvoices();
                 if (typeof renderHistory === 'function') renderHistory();
                 if (typeof updateStats === 'function') updateStats();
-            });
-
-            // Listen to projects
-            const projectsRef = window.dbRef(window.database, `users/${userId}/projects`);
-            window.dbOnValue(projectsRef, (snapshot) => {
-                window.projects = [];
-                snapshot.forEach((childSnapshot) => {
-                    window.projects.push({
-                        id: childSnapshot.key,
-                        ...childSnapshot.val()
-                    });
-                });
-                console.log('Loaded projects:', window.projects.length);
-                if (typeof renderProjects === 'function') renderProjects();
-                if (typeof updateStats === 'function') updateStats();
-            });
-            
-            // Listen to pipeline jobs
-            const pipelineRef = window.dbRef(window.database, `users/${userId}/pipelineJobs`);
-            window.dbOnValue(pipelineRef, (snapshot) => {
-                window.pipelineJobs = [];
-                snapshot.forEach((childSnapshot) => {
-                    window.pipelineJobs.push({
-                        id: childSnapshot.key,
-                        ...childSnapshot.val()
-                    });
-                });
-                console.log('Loaded pipeline jobs:', window.pipelineJobs.length);
-                if (typeof renderPipeline === 'function') renderPipeline();
-                if (typeof renderInvoices === 'function') renderInvoices();
-                if (typeof updateStats === 'function') updateStats();
                 if (typeof renderCalendar === 'function') renderCalendar();
             });
-            
-            // Listen to calendar events/holidays
-            const eventsRef = window.dbRef(window.database, `users/${userId}/calendarEvents`);
-            window.dbOnValue(eventsRef, (snapshot) => {
-                window.calendarEvents = [];
-                snapshot.forEach((childSnapshot) => {
-                    window.calendarEvents.push({
-                        id: childSnapshot.key,
-                        ...childSnapshot.val()
-                    });
-                });
-                console.log('Loaded calendar events:', window.calendarEvents.length);
-                if (typeof renderCalendar === 'function') renderCalendar();
-            });
+        }
             
             // Load review history and saved calculations
             if (typeof loadReviewHistory === 'function') loadReviewHistory();
