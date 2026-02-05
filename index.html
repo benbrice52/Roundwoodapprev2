@@ -2958,7 +2958,7 @@
 
                 // Get all data
                 const userId = window.auth.currentUser.uid;
-                const snapshot = await window.dbGet(window.dbRef(window.database, `users/${userId}`));
+                const snapshot = await window.dbGet(window.dbRef(window.database, `sharedData`));
                 const allData = snapshot.val();
 
                 // Create formatted export data
@@ -3088,7 +3088,7 @@
             console.log('Loading data for user:', userId);
             
             // Listen to sites
-            const sitesRef = window.dbRef(window.database, `users/${userId}/sites`);
+            const sitesRef = window.dbRef(window.database, `sharedData/sites`);
             window.dbOnValue(sitesRef, (snapshot) => {
                 window.sites = [];
                 snapshot.forEach((childSnapshot) => {
@@ -3103,7 +3103,7 @@
             });
 
             // Listen to visits
-            const visitsRef = window.dbRef(window.database, `users/${userId}/visits`);
+            const visitsRef = window.dbRef(window.database, `sharedData/visits`);
             window.dbOnValue(visitsRef, (snapshot) => {
                 window.visits = [];
                 snapshot.forEach((childSnapshot) => {
@@ -3120,7 +3120,7 @@
             });
 
             // Listen to projects
-            const projectsRef = window.dbRef(window.database, `users/${userId}/projects`);
+            const projectsRef = window.dbRef(window.database, `sharedData/projects`);
             window.dbOnValue(projectsRef, (snapshot) => {
                 window.projects = [];
                 snapshot.forEach((childSnapshot) => {
@@ -3135,7 +3135,7 @@
             });
             
             // Listen to pipeline jobs
-            const pipelineRef = window.dbRef(window.database, `users/${userId}/pipelineJobs`);
+            const pipelineRef = window.dbRef(window.database, `sharedData/pipelineJobs`);
             window.dbOnValue(pipelineRef, (snapshot) => {
                 window.pipelineJobs = [];
                 snapshot.forEach((childSnapshot) => {
@@ -3152,7 +3152,7 @@
             });
             
             // Listen to calendar events/holidays
-            const eventsRef = window.dbRef(window.database, `users/${userId}/calendarEvents`);
+            const eventsRef = window.dbRef(window.database, `sharedData/calendarEvents`);
             window.dbOnValue(eventsRef, (snapshot) => {
                 window.calendarEvents = [];
                 snapshot.forEach((childSnapshot) => {
@@ -3532,7 +3532,7 @@ This notification was generated automatically by Roundwood Route Manager.
             console.log('Loading data for user:', userId);
             
             // Listen to sites
-            const sitesRef = window.dbRef(window.database, `users/${userId}/sites`);
+            const sitesRef = window.dbRef(window.database, `sharedData/sites`);
             window.dbOnValue(sitesRef, (snapshot) => {
                 sites = [];
                 snapshot.forEach((childSnapshot) => {
@@ -3548,7 +3548,7 @@ This notification was generated automatically by Roundwood Route Manager.
             });
 
             // Listen to visits
-            const visitsRef = window.dbRef(window.database, `users/${userId}/visits`);
+            const visitsRef = window.dbRef(window.database, `sharedData/visits`);
             window.dbOnValue(visitsRef, (snapshot) => {
                 visits = [];
                 snapshot.forEach((childSnapshot) => {
@@ -3566,7 +3566,7 @@ This notification was generated automatically by Roundwood Route Manager.
             });
 
             // Listen to projects
-            const projectsRef = window.dbRef(window.database, `users/${userId}/projects`);
+            const projectsRef = window.dbRef(window.database, `sharedData/projects`);
             window.dbOnValue(projectsRef, (snapshot) => {
                 projects = [];
                 snapshot.forEach((childSnapshot) => {
@@ -3628,12 +3628,12 @@ This notification was generated automatically by Roundwood Route Manager.
                 
                 if (editingSiteId) {
                     // UPDATE existing site
-                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${editingSiteId}`), siteData);
+                    await window.dbUpdate(window.dbRef(window.database, `sharedData/sites/${editingSiteId}`), siteData);
 
                     // Update all pending visits for this site
                     const siteVisits = window.visits.filter(v => v.siteId === editingSiteId && v.status === 'pending');
                     for (const visit of siteVisits) {
-                        await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                        await window.dbUpdate(window.dbRef(window.database, `sharedData/visits/${visit.id}`), {
                             siteName: siteData.name,
                             siteAddress: siteData.address,
                             price: siteData.price,
@@ -3648,7 +3648,7 @@ This notification was generated automatically by Roundwood Route Manager.
                     siteData.firstVisit = document.getElementById('siteFirstVisit').value;
                     siteData.createdAt = new Date().toISOString();
                     
-                    const siteRef = window.dbPush(window.dbRef(window.database, `users/${userId}/sites`));
+                    const siteRef = window.dbPush(window.dbRef(window.database, `sharedData/sites`));
                     await window.dbSet(siteRef, siteData);
 
                     // Create first visit
@@ -3663,7 +3663,7 @@ This notification was generated automatically by Roundwood Route Manager.
                         createdAt: new Date().toISOString()
                     };
 
-                    const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                    const visitRef = window.dbPush(window.dbRef(window.database, `sharedData/visits`));
                     await window.dbSet(visitRef, visitData);
 
                     alert('✅ Site added successfully!');
@@ -4542,7 +4542,7 @@ This notification was generated automatically by Roundwood Route Manager.
 
             try {
                 const userId = window.currentUser.uid;
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/sites/${siteId}`), {
                     paused: true,
                     pausedUntil: pausedUntil,
                     pausedDate: new Date().toISOString().split('T')[0]
@@ -4551,7 +4551,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 // Hide all pending visits for this site
                 const siteVisits = window.visits.filter(v => v.siteId === siteId && v.status === 'pending');
                 for (const visit of siteVisits) {
-                    await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                    await window.dbUpdate(window.dbRef(window.database, `sharedData/visits/${visit.id}`), {
                         hidden: true
                     });
                 }
@@ -4576,7 +4576,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 const userId = window.currentUser.uid;
                 
                 // Resume the site
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${siteId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/sites/${siteId}`), {
                     paused: false,
                     pausedUntil: null,
                     resumedDate: new Date().toISOString().split('T')[0]
@@ -4585,7 +4585,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 // Unhide visits and create new visit from today
                 const siteVisits = window.visits.filter(v => v.siteId === siteId && v.hidden);
                 for (const visit of siteVisits) {
-                    await window.dbRemove(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`));
+                    await window.dbRemove(window.dbRef(window.database, `sharedData/visits/${visit.id}`));
                 }
 
                 // Create new visit starting today
@@ -4600,7 +4600,7 @@ This notification was generated automatically by Roundwood Route Manager.
                     createdAt: new Date().toISOString()
                 };
 
-                const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                const nextVisitRef = window.dbPush(window.dbRef(window.database, `sharedData/visits`));
                 await window.dbSet(nextVisitRef, nextVisitData);
 
                 alert('✅ Contract resumed! New visit scheduled for today.');
@@ -4701,7 +4701,7 @@ This notification was generated automatically by Roundwood Route Manager.
                     createdAt: new Date().toISOString()
                 };
 
-                const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                const visitRef = window.dbPush(window.dbRef(window.database, `sharedData/visits`));
                 await window.dbSet(visitRef, visitData);
 
                 alert(`✅ Visit scheduled for ${new Date(scheduledDate).toLocaleDateString('en-GB')}!`);
@@ -4731,11 +4731,11 @@ This notification was generated automatically by Roundwood Route Manager.
                 // Delete all visits for this site
                 const siteVisits = window.visits.filter(v => v.siteId === siteId);
                 for (const visit of siteVisits) {
-                    await window.dbRemove(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`));
+                    await window.dbRemove(window.dbRef(window.database, `sharedData/visits/${visit.id}`));
                 }
 
                 // Delete the site
-                await window.dbRemove(window.dbRef(window.database, `users/${userId}/sites/${siteId}`));
+                await window.dbRemove(window.dbRef(window.database, `sharedData/sites/${siteId}`));
 
                 alert(`✅ Site "${site.name}" and all associated visits deleted successfully.`);
             } catch (error) {
@@ -4975,7 +4975,7 @@ This notification was generated automatically by Roundwood Route Manager.
 
             try {
                 const userId = window.currentUser.uid;
-                const projectRef = window.dbPush(window.dbRef(window.database, `users/${userId}/projects`));
+                const projectRef = window.dbPush(window.dbRef(window.database, `sharedData/projects`));
                 await window.dbSet(projectRef, projectData);
 
                 closeAddProjectModal();
@@ -4992,7 +4992,7 @@ This notification was generated automatically by Roundwood Route Manager.
             
             try {
                 const userId = window.currentUser.uid;
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/projects/${projectId}`), {
                     status: 'in-progress',
                     actualStartDate: new Date().toISOString().split('T')[0]
                 });
@@ -5145,7 +5145,7 @@ This notification was generated automatically by Roundwood Route Manager.
             try {
                 const userId = window.currentUser.uid;
                 
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/projects/${projectId}`), {
                     status: 'completed',
                     completedBy: completedBy,
                     actualCompletionDate: actualEndDate,
@@ -5220,7 +5220,7 @@ This notification was generated automatically by Roundwood Route Manager.
 
             try {
                 const userId = window.currentUser.uid;
-                await window.dbRemove(window.dbRef(window.database, `users/${userId}/projects/${projectId}`));
+                await window.dbRemove(window.dbRef(window.database, `sharedData/projects/${projectId}`));
                 alert(`✅ Project "${project.projectName}" deleted successfully.`);
             } catch (error) {
                 console.error('Error deleting project:', error);
@@ -5295,7 +5295,7 @@ This notification was generated automatically by Roundwood Route Manager.
 
                         try {
                             const userId = window.currentUser.uid;
-                            await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), updatedData);
+                            await window.dbUpdate(window.dbRef(window.database, `sharedData/projects/${projectId}`), updatedData);
                             closeAddProjectModal();
                             alert('✅ Project updated successfully!');
                         } catch (error) {
@@ -5313,7 +5313,7 @@ This notification was generated automatically by Roundwood Route Manager.
             
             try {
                 const userId = window.currentUser.uid;
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/projects/${projectId}`), {
                     invoiceStatus: 'sent',
                     invoiceSentDate: new Date().toISOString().split('T')[0]
                 });
@@ -5366,7 +5366,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 const updatedUpdates = [...existingUpdates, newUpdate];
                 
                 // Save to Firebase
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/projects/${projectId}`), {
                     updates: updatedUpdates
                 });
 
@@ -5392,7 +5392,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 const updatedUpdates = (project.updates || []).filter(u => u.id !== updateId);
                 
                 // Save to Firebase
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/projects/${projectId}`), {
                     updates: updatedUpdates
                 });
 
@@ -5552,7 +5552,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 
                 // Update current visit
                 const completedDate = new Date().toISOString().split('T')[0];
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/visits/${visitId}`), {
                     status: 'completed',
                     completedDate: completedDate,
                     completedBy: completedBy,
@@ -5589,7 +5589,7 @@ This notification was generated automatically by Roundwood Route Manager.
                                     createdAt: new Date().toISOString()
                                 };
 
-                                const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                                const nextVisitRef = window.dbPush(window.dbRef(window.database, `sharedData/visits`));
                                 await window.dbSet(nextVisitRef, nextVisitData);
                                 nextVisitCreated = true;
                             }
@@ -5610,7 +5610,7 @@ This notification was generated automatically by Roundwood Route Manager.
                             createdAt: new Date().toISOString()
                         };
 
-                        const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                        const nextVisitRef = window.dbPush(window.dbRef(window.database, `sharedData/visits`));
                         await window.dbSet(nextVisitRef, nextVisitData);
                         nextVisitCreated = true;
                     }
@@ -5652,7 +5652,7 @@ This notification was generated automatically by Roundwood Route Manager.
 
             try {
                 const userId = window.currentUser.uid;
-                await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visitId}`), {
+                await window.dbUpdate(window.dbRef(window.database, `sharedData/visits/${visitId}`), {
                     invoiceStatus: 'sent',
                     invoiceSentDate: new Date().toISOString().split('T')[0]
                 });
@@ -6357,7 +6357,7 @@ Roundwood Solutions Limited
             
             try {
                 const userId = window.currentUser.uid;
-                const eventsRef = window.dbRef(window.database, `users/${userId}/calendarEvents`);
+                const eventsRef = window.dbRef(window.database, `sharedData/calendarEvents`);
                 
                 // Create a single event with start and end dates
                 const newEventRef = window.dbPush(eventsRef);
@@ -6425,7 +6425,7 @@ Roundwood Solutions Limited
             
             try {
                 const userId = window.currentUser.uid;
-                const eventRef = window.dbRef(window.database, `users/${userId}/calendarEvents/${eventId}`);
+                const eventRef = window.dbRef(window.database, `sharedData/calendarEvents/${eventId}`);
                 
                 await window.dbUpdate(eventRef, {
                     title: title,
@@ -6452,7 +6452,7 @@ Roundwood Solutions Limited
             
             try {
                 const userId = window.currentUser.uid;
-                const eventRef = window.dbRef(window.database, `users/${userId}/calendarEvents/${eventId}`);
+                const eventRef = window.dbRef(window.database, `sharedData/calendarEvents/${eventId}`);
                 await window.dbRemove(eventRef);
                 alert('✅ Event deleted');
                 closeEditEventModal();
@@ -6566,7 +6566,7 @@ Roundwood Solutions Limited
             
             try {
                 // Save review request
-                const reviewRef = window.dbPush(window.dbRef(window.database, `users/${userId}/reviewRequests`));
+                const reviewRef = window.dbPush(window.dbRef(window.database, `sharedData/reviewRequests`));
                 await window.dbSet(reviewRef, reviewData);
                 
                 // Find and update matching pipeline job (paid jobs with same customer email)
@@ -6578,7 +6578,7 @@ Roundwood Solutions Limited
                     );
                     
                     if (matchingJob) {
-                        const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${matchingJob.id}`);
+                        const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${matchingJob.id}`);
                         await window.dbUpdate(jobRef, {
                             reviewRequested: true,
                             reviewRequestedDate: new Date().toISOString()
@@ -6601,7 +6601,7 @@ Roundwood Solutions Limited
             if (!window.currentUser) return;
             
             const userId = window.currentUser.uid;
-            const reviewsRef = window.dbRef(window.database, `users/${userId}/reviewRequests`);
+            const reviewsRef = window.dbRef(window.database, `sharedData/reviewRequests`);
             
             window.dbOnValue(reviewsRef, (snapshot) => {
                 const container = document.getElementById('reviewHistoryContainer');
@@ -7010,7 +7010,7 @@ Roundwood Solutions Limited
         async function getNextJobReference() {
             try {
                 const userId = window.currentUser.uid;
-                const jobsRef = window.dbRef(window.database, `users/${userId}/pipelineJobs`);
+                const jobsRef = window.dbRef(window.database, `sharedData/pipelineJobs`);
                 const snapshot = await window.dbGet(jobsRef);
                 
                 if (!snapshot.exists()) {
@@ -7060,7 +7060,7 @@ Roundwood Solutions Limited
                 }
                 
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { 
                     stage: 'quoteSent', 
                     quoteSentDate: new Date().toISOString(),
@@ -7086,7 +7086,7 @@ Roundwood Solutions Limited
             
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbRemove(jobRef);
                 
                 alert('✅ Lead deleted successfully');
@@ -7185,7 +7185,7 @@ Roundwood Solutions Limited
                     // Later stages: Update linked visit's start date
                     const newStartDate = document.getElementById('editPipelineStartDate').value;
                     if (newStartDate && job.visitId) {
-                        const visitRef = window.dbRef(window.database, `users/${userId}/visits/${job.visitId}`);
+                        const visitRef = window.dbRef(window.database, `sharedData/visits/${job.visitId}`);
                         await window.dbUpdate(visitRef, {
                             scheduledDate: newStartDate
                         });
@@ -7193,7 +7193,7 @@ Roundwood Solutions Limited
                 }
                 
                 // Update pipeline job
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, updatedData);
                 
                 alert('✅ Job updated successfully!');
@@ -7212,7 +7212,7 @@ Roundwood Solutions Limited
         window.markAsApproved = async function(jobId) {
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'approved', approvedDate: new Date().toISOString() });
                 alert('✅ Job marked as approved!');
             } catch (error) {
@@ -7272,12 +7272,12 @@ Roundwood Solutions Limited
                 };
                 
                 // Add visit to database
-                const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                const visitRef = window.dbPush(window.dbRef(window.database, `sharedData/visits`));
                 const visitId = visitRef.key;
                 await window.dbSet(visitRef, visitData);
                 
                 // Update pipeline job to in-progress and link to visit
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { 
                     stage: 'inProgress', 
                     startedDate: new Date().toISOString(),
@@ -7300,7 +7300,7 @@ Roundwood Solutions Limited
         window.markAsComplete = async function(jobId) {
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'complete', completedDate: new Date().toISOString() });
                 alert('✅ Job complete! Ready to invoice.');
             } catch (error) {
@@ -7312,7 +7312,7 @@ Roundwood Solutions Limited
         window.sendInvoice = async function(jobId) {
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'invoiced', invoicedDate: new Date().toISOString() });
                 alert('✅ Invoiced! Awaiting payment.');
             } catch (error) {
@@ -7324,7 +7324,7 @@ Roundwood Solutions Limited
         window.markAsPaid = async function(jobId) {
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'paid', paidDate: new Date().toISOString() });
                 alert('✅ Payment received! 🎉');
             } catch (error) {
@@ -7341,7 +7341,7 @@ Roundwood Solutions Limited
             if (!confirm('Move this job back to New Leads?')) return;
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'newLead' });
                 alert('✅ Job moved back to New Leads');
             } catch (error) {
@@ -7354,7 +7354,7 @@ Roundwood Solutions Limited
             if (!confirm('Move this job back to Quote Sent?')) return;
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'quoteSent' });
                 alert('✅ Job moved back to Quote Sent');
             } catch (error) {
@@ -7367,7 +7367,7 @@ Roundwood Solutions Limited
             if (!confirm('Move this job back to Approved?')) return;
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'approved' });
                 alert('✅ Job moved back to Approved');
             } catch (error) {
@@ -7380,7 +7380,7 @@ Roundwood Solutions Limited
             if (!confirm('Move this job back to In Progress?')) return;
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'inProgress' });
                 alert('✅ Job moved back to In Progress');
             } catch (error) {
@@ -7393,7 +7393,7 @@ Roundwood Solutions Limited
             if (!confirm('Move this job back to Complete?')) return;
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'complete' });
                 alert('✅ Job moved back to Complete');
             } catch (error) {
@@ -7406,7 +7406,7 @@ Roundwood Solutions Limited
             if (!confirm('Move this job back to Invoiced?')) return;
             try {
                 const userId = window.currentUser.uid;
-                const jobRef = window.dbRef(window.database, `users/${userId}/pipelineJobs/${jobId}`);
+                const jobRef = window.dbRef(window.database, `sharedData/pipelineJobs/${jobId}`);
                 await window.dbUpdate(jobRef, { stage: 'invoiced' });
                 alert('✅ Job moved back to Invoiced');
             } catch (error) {
@@ -7420,7 +7420,7 @@ Roundwood Solutions Limited
         window.markVisitAsInvoiced = async function(visitId) {
             try {
                 const userId = window.currentUser.uid;
-                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                const visitRef = window.dbRef(window.database, `sharedData/visits/${visitId}`);
                 await window.dbUpdate(visitRef, { 
                     invoiced: true, 
                     invoicedDate: new Date().toISOString() 
@@ -7437,7 +7437,7 @@ Roundwood Solutions Limited
         window.resumeVisit = async function(visitId) {
             try {
                 const userId = window.currentUser.uid;
-                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                const visitRef = window.dbRef(window.database, `sharedData/visits/${visitId}`);
                 await window.dbUpdate(visitRef, { paused: false, resumedDate: new Date().toISOString() });
                 alert('✅ Visit resumed!');
                 if (typeof renderVisits === 'function') renderVisits();
@@ -7485,7 +7485,7 @@ Roundwood Solutions Limited
             
             try {
                 const userId = window.currentUser.uid;
-                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                const visitRef = window.dbRef(window.database, `sharedData/visits/${visitId}`);
                 
                 await window.dbUpdate(visitRef, {
                     scheduledDate: scheduledDate,
@@ -7520,7 +7520,7 @@ Roundwood Solutions Limited
             
             try {
                 const userId = window.currentUser.uid;
-                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                const visitRef = window.dbRef(window.database, `sharedData/visits/${visitId}`);
                 await window.dbRemove(visitRef);
                 
                 alert('✅ Visit deleted successfully');
@@ -7546,7 +7546,7 @@ Roundwood Solutions Limited
                 
                 try {
                     const userId = window.currentUser.uid;
-                    const jobRef = window.dbPush(window.dbRef(window.database, `users/${userId}/pipelineJobs`));
+                    const jobRef = window.dbPush(window.dbRef(window.database, `sharedData/pipelineJobs`));
                     const nextRef = await getNextJobReference();
                     
                     // Calculate deadline
@@ -7616,7 +7616,7 @@ Roundwood Solutions Limited
                     };
                     
                     await window.dbUpdate(
-                        window.dbRef(window.database, `users/${userId}/pipelineJobs/${currentPipelineJobId}`),
+                        window.dbRef(window.database, `sharedData/pipelineJobs/${currentPipelineJobId}`),
                         quoteData
                     );
                     
@@ -7654,7 +7654,7 @@ Roundwood Solutions Limited
                 }
                 
                 await window.dbUpdate(
-                    window.dbRef(window.database, `users/${userId}/pipelineJobs/${currentPipelineJobId}`),
+                    window.dbRef(window.database, `sharedData/pipelineJobs/${currentPipelineJobId}`),
                     updateData
                 );
                 
@@ -7684,7 +7684,7 @@ Roundwood Solutions Limited
                     };
                     
                     await window.dbUpdate(
-                        window.dbRef(window.database, `users/${userId}/pipelineJobs/${currentPipelineJobId}`),
+                        window.dbRef(window.database, `sharedData/pipelineJobs/${currentPipelineJobId}`),
                         completeData
                     );
                     
@@ -7720,7 +7720,7 @@ Roundwood Solutions Limited
                 }
                 
                 await window.dbUpdate(
-                    window.dbRef(window.database, `users/${userId}/pipelineJobs/${currentPipelineJobId}`),
+                    window.dbRef(window.database, `sharedData/pipelineJobs/${currentPipelineJobId}`),
                     invoiceData
                 );
                 
@@ -7748,7 +7748,7 @@ Roundwood Solutions Limited
                 };
                 
                 await window.dbUpdate(
-                    window.dbRef(window.database, `users/${userId}/pipelineJobs/${currentPipelineJobId}`),
+                    window.dbRef(window.database, `sharedData/pipelineJobs/${currentPipelineJobId}`),
                     paymentData
                 );
                 
