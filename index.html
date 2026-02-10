@@ -2903,6 +2903,9 @@
         window.dbRemove = remove;
         window.dbOnValue = onValue;
         window.dbPush = push;
+        
+        // TEAM COLLABORATION: All users share the same data location
+        window.SHARED_TEAM_ID = "GJ41xImaXIMQ12BuMupJccCfKBj2";
         window.dbQuery = query;
         window.dbOrderByChild = orderByChild;
         window.dbEqualTo = equalTo;
@@ -3187,9 +3190,6 @@
                 
                 // Initialize app data
                 window.currentUser = user;
-                
-                // TEAM COLLABORATION: All users share the same data location
-                window.SHARED_TEAM_ID = "GJ41xImaXIMQ12BuMupJccCfKBj2";
                 
                 // Initialize Google Drive API (disabled until OAuth fully configured)
                 // Uncomment this line after completing OAuth consent screen setup
@@ -5638,7 +5638,7 @@ This notification was generated automatically by Roundwood Route Manager.
                             createdAt: new Date().toISOString()
                         };
 
-                        const nextVisitRef = window.dbPush(window.dbRef(window.database, \`users/\${userId}/visits\`));
+                        const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
                         await window.dbSet(nextVisitRef, nextVisitData);
                         nextVisitCreated = true;
                     } else {
