@@ -3619,12 +3619,13 @@ This notification was generated automatically by Roundwood Route Manager.
         document.getElementById('addSiteForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const frequencyValue = document.getElementById('siteFrequency').value;
             const siteData = {
                 name: document.getElementById('siteName').value,
                 address: document.getElementById('siteAddress').value,
                 contact: document.getElementById('siteContact').value,
                 phone: document.getElementById('sitePhone').value,
-                frequency: parseInt(document.getElementById('siteFrequency').value),
+                frequency: frequencyValue === 'seasonal' ? 'seasonal' : parseInt(frequencyValue),
                 price: parseFloat(document.getElementById('sitePrice').value),
                 notes: document.getElementById('siteNotes').value
             };
