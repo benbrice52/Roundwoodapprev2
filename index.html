@@ -4266,6 +4266,11 @@ This notification was generated automatically by Roundwood Route Manager.
             // Check completed visits
             if (window.visits) {
                 window.visits.forEach(visit => {
+                    // Skip archived/paid visits
+                    if (visit.archived === true || visit.paid === true) {
+                        return;
+                    }
+                    
                     // Check ALL possible invoice fields (old and new systems)
                     const isInvoiced = 
                         visit.invoiced === true ||           // Old boolean field
@@ -5363,8 +5368,11 @@ This notification was generated automatically by Roundwood Route Manager.
 
         // Delete Project
         window.deleteProject = async (projectId) => {
-            const project = projects.find(p => p.id === projectId);
-            if (!project) return;
+            const project = window.projects ? window.projects.find(p => p.id === projectId) : null;
+            if (!project) {
+                alert('Project not found');
+                return;
+            }
 
             if (!confirm(`Are you sure you want to delete "${project.projectName}"?\n\nThis action cannot be undone.`)) {
                 return;
@@ -5861,14 +5869,42 @@ This notification was generated automatically by Roundwood Route Manager.
                 return;
             }
             
-            // Get completed maintenance visits
+            console.log('=== HISTORY DEBUG ===');
+            console.log('Total visits in database:', window.visits.length);
+            console.log('All visits:', window.visits);
+            
+            // Get completed maintenance visits - check multiple conditions
             const completedVisits = window.visits
-                .filter(v => v.status === 'completed')
+                .filter(v => {
+                    // Consider a visit completed if:
+                    // 1. Status is explicitly 'completed'
+                    // 2. Has a completedDate (was completed at some point)
+                    // 3. Has completedBy field (someone marked it complete)
+                    // 4. Is invoiced (must have been completed to invoice)
+                    const isCompleted = 
+                        v.status === 'completed' ||
+                        v.completedDate ||
+                        v.completedBy ||
+                        v.invoiced === true ||
+                        v.invoiceStatus === 'sent' ||
+                        v.invoicedDate ||
+                        v.invoiceSentDate;
+                    
+                    if (!isCompleted) {
+                        console.log('Excluding visit (not completed):', v.siteName, 'Status:', v.status, 'CompletedDate:', v.completedDate);
+                    } else {
+                        console.log('Including visit:', v.siteName, 'Status:', v.status, 'CompletedDate:', v.completedDate);
+                    }
+                    return isCompleted;
+                })
                 .map(v => ({
                     ...v,
                     type: 'maintenance',
                     sortDate: new Date(v.completedDate || v.scheduledDate)
                 }));
+            
+            console.log('Completed visits found:', completedVisits.length);
+            console.log('Completed visits:', completedVisits);
             
             // Get completed projects
             const completedProjects = window.projects
@@ -5883,9 +5919,13 @@ This notification was generated automatically by Roundwood Route Manager.
                     }))
                 : [];
             
+            console.log('Completed projects found:', completedProjects.length);
+            
             // Combine and sort by completion date (newest first)
             const allCompleted = [...completedVisits, ...completedProjects]
                 .sort((a, b) => b.sortDate - a.sortDate);
+            
+            console.log('Total items in history:', allCompleted.length);
 
             if (allCompleted.length === 0) {
                 container.innerHTML = `
@@ -5897,8 +5937,22 @@ This notification was generated automatically by Roundwood Route Manager.
                 `;
                 return;
             }
-
-            container.innerHTML = allCompleted.map(item => {
+            
+            // Add debug info at top of history
+            const debugInfo = `
+                <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <div style="font-weight: 600; color: #92400e; margin-bottom: 0.5rem;">📊 Debug Info</div>
+                    <div style="font-size: 0.875rem; color: #78350f;">
+                        Total visits in database: <strong>${window.visits.length}</strong><br>
+                        Completed visits: <strong>${completedVisits.length}</strong><br>
+                        Completed projects: <strong>${completedProjects.length}</strong><br>
+                        Showing in history: <strong>${allCompleted.length}</strong>
+                    </div>
+                </div>
+            `;
+            
+            // Combine debug info with rendered history
+            container.innerHTML = debugInfo + allCompleted.map(item => {
                 const completedDate = new Date(item.completedDate);
                 const formattedDate = completedDate.toLocaleDateString('en-GB', { 
                     day: 'numeric', 
@@ -5930,20 +5984,46 @@ This notification was generated automatically by Roundwood Route Manager.
                                     <div class="meta-value">${item.completedBy}</div>
                                 </div>
                             ` : ''}
+                            ${item.customerName && item.customerName !== 'Na' ? `
+                                <div class="meta-item">
+                                    <div class="meta-label">Customer Name</div>
+                                    <div class="meta-value">${item.customerName}</div>
+                                </div>
+                            ` : ''}
                             <div class="meta-item">
                                 <div class="meta-label">Amount</div>
                                 <div class="meta-value">£${item.price ? parseFloat(item.price).toFixed(2) : '0.00'}</div>
                             </div>
+                            ${item.workCompleted ? `
+                                <div class="meta-item" style="grid-column: 1 / -1;">
+                                    <div class="meta-label">Work Completed</div>
+                                    <div class="meta-value">${typeof item.workCompleted === 'object' ? JSON.stringify(item.workCompleted, null, 2) : item.workCompleted}</div>
+                                </div>
+                            ` : ''}
                             ${item.completionNotes ? `
                                 <div class="meta-item" style="grid-column: 1 / -1;">
                                     <div class="meta-label">Notes</div>
                                     <div class="meta-value">${item.completionNotes}</div>
                                 </div>
                             ` : ''}
+                            ${item.siteNotes ? `
+                                <div class="meta-item" style="grid-column: 1 / -1;">
+                                    <div class="meta-label">Site Notes</div>
+                                    <div class="meta-value">${item.siteNotes}</div>
+                                </div>
+                            ` : ''}
                             ${isProject && item.description ? `
                                 <div class="meta-item" style="grid-column: 1 / -1;">
                                     <div class="meta-label">Description</div>
                                     <div class="meta-value">${item.description}</div>
+                                </div>
+                            ` : ''}
+                            ${item.customerSignature ? `
+                                <div class="meta-item" style="grid-column: 1 / -1;">
+                                    <div class="meta-label">Customer Signature</div>
+                                    <div class="meta-value">
+                                        <img src="${item.customerSignature}" alt="Customer Signature" style="max-width: 300px; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0.5rem; background: white;">
+                                    </div>
                                 </div>
                             ` : ''}
                         </div>
@@ -6113,8 +6193,9 @@ This notification was generated automatically by Roundwood Route Manager.
                                         ${status.label}
                                     </div>
                                 </div>
-                                <div>
+                                <div style="display: flex; gap: 0.5rem;">
                                     ${status.action}
+                                    <button class="btn btn-danger" onclick="deleteProject('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">🗑️</button>
                                 </div>
                             </div>
                             <div style="font-size: 0.85rem; color: #9ca3af; margin-top: 0.5rem;">
@@ -7734,8 +7815,12 @@ Roundwood Solutions Limited
                 
             const userId = window.SHARED_TEAM_ID;  // All team members use same data location
                 const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
-                // Remove from invoice tracking by deleting it or archiving
-                await window.dbRemove(visitRef);
+                // Archive the visit instead of deleting it - keeps it in history!
+                await window.dbUpdate(visitRef, {
+                    paid: true,
+                    paidDate: new Date().toISOString(),
+                    archived: true  // Mark as archived so it doesn't show in invoice tracking
+                });
                 alert('✅ Payment received! Visit archived.');
                 if (typeof renderInvoices === 'function') renderInvoices();
                 if (typeof renderHistory === 'function') renderHistory();
