@@ -1342,7 +1342,6 @@
         <nav class="nav-tabs">
             <button class="active" onclick="showTab('dashboard')">📊 Dashboard</button>
             <button onclick="showTab('pipeline')">🎯 Pipeline <span class="badge" id="pipelineCount">0</span></button>
-            <button onclick="showTab('visits')">📅 Upcoming Visits <span class="badge" id="upcomingCount">0</span></button>
             <button onclick="showTab('invoices')">💰 Invoice Tracking <span class="badge" id="uninvoicedCount">0</span></button>
             <button onclick="showTab('reviews')">⭐ Reviews</button>
             
@@ -1589,16 +1588,6 @@
                         <button class="btn btn-primary" onclick="openAddProjectModal()">+ Add New Project</button>
                     </div>
                     <div id="projectsContainer"></div>
-                </div>
-            </div>
-
-            <!-- Visits Tab -->
-            <div id="visits" class="tab-pane">
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Upcoming Visits</h2>
-                    </div>
-                    <div id="visitsContainer"></div>
                 </div>
             </div>
 
@@ -2320,6 +2309,12 @@
                 <div class="form-group">
                     <label for="siteFirstVisit">First Visit Date *</label>
                     <input type="date" id="siteFirstVisit" required>
+                </div>
+                
+                <div class="form-group" id="nextVisitDateGroup" style="display: none;">
+                    <label for="siteNextVisit">Next Visit Date</label>
+                    <input type="date" id="siteNextVisit">
+                    <small>Update the date for the next scheduled visit</small>
                 </div>
                 
                 <div class="form-group">
@@ -3076,12 +3071,12 @@
                 if (typeof renderInvoiceTracking === 'function') renderInvoiceTracking();
             } else if (tabName === 'projects') {
                 if (typeof renderProjects === 'function') renderProjects();
-            } else if (tabName === 'upcomingVisits') {
-                if (typeof renderAllUpcomingVisits === 'function') renderAllUpcomingVisits();
             } else if (tabName === 'invoiceTracking') {
                 if (typeof renderFullInvoiceTracking === 'function') renderFullInvoiceTracking();
             } else if (tabName === 'pipeline') {
                 if (typeof renderPipeline === 'function') renderPipeline();
+            } else if (tabName === 'history') {
+                if (typeof renderHistory === 'function') renderHistory();
             }
         };
 
@@ -3606,6 +3601,13 @@ This notification was generated automatically by Roundwood Route Manager.
             document.getElementById('addSiteForm').reset();
             editingSiteId = null; // Clear edit mode
             
+            // Reset field visibility for adding new sites
+            const firstVisitGroup = document.getElementById('siteFirstVisit')?.parentElement;
+            const nextVisitGroup = document.getElementById('nextVisitDateGroup');
+            
+            if (firstVisitGroup) firstVisitGroup.style.display = 'block';
+            if (nextVisitGroup) nextVisitGroup.style.display = 'none';
+            
             // Reset button text
             const submitBtn = document.querySelector('#addSiteForm button[type="submit"]');
             if (submitBtn) submitBtn.textContent = 'Add Site';
@@ -3640,13 +3642,44 @@ This notification was generated automatically by Roundwood Route Manager.
 
                     // Update all pending visits for this site
                     const siteVisits = window.visits.filter(v => v.siteId === editingSiteId && v.status === 'pending');
-                    for (const visit of siteVisits) {
-                        await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                    
+                    // Check if there's a next visit date to update
+                    const nextVisitDateField = document.getElementById('siteNextVisit');
+                    const nextVisitDate = nextVisitDateField ? nextVisitDateField.value : null;
+                    
+                    if (nextVisitDate && siteVisits.length > 0) {
+                        // Update the earliest visit with the new date
+                        const earliestVisit = siteVisits.sort((a, b) => 
+                            new Date(a.scheduledDate) - new Date(b.scheduledDate)
+                        )[0];
+                        
+                        await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${earliestVisit.id}`), {
                             siteName: siteData.name,
                             siteAddress: siteData.address,
                             price: siteData.price,
-                            frequency: siteData.frequency
+                            frequency: siteData.frequency,
+                            scheduledDate: nextVisitDate
                         });
+                        
+                        // Update the rest without changing dates
+                        for (const visit of siteVisits.slice(1)) {
+                            await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                                siteName: siteData.name,
+                                siteAddress: siteData.address,
+                                price: siteData.price,
+                                frequency: siteData.frequency
+                            });
+                        }
+                    } else {
+                        // Just update names/prices without changing dates
+                        for (const visit of siteVisits) {
+                            await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`), {
+                                siteName: siteData.name,
+                                siteAddress: siteData.address,
+                                price: siteData.price,
+                                frequency: siteData.frequency
+                            });
+                        }
                     }
 
                     alert('✅ Site updated successfully!');
@@ -3926,8 +3959,23 @@ This notification was generated automatically by Roundwood Route Manager.
             
             pendingVisits.forEach(visit => {
                 if (visit.pipelineJobId) {
-                    // This is a project visit - include all of them
-                    projectVisits.push(visit);
+                    // This is a project visit - check pipeline job status
+                    if (window.pipelineJobs) {
+                        const pipelineJob = window.pipelineJobs.find(j => j.id === visit.pipelineJobId);
+                        if (!pipelineJob) {
+                            // Can't find the job - show the visit anyway (benefit of doubt)
+                            projectVisits.push(visit);
+                        } else {
+                            // Found the job - only show if it's NOT in completed stages
+                            const completedStages = ['complete', 'invoiced', 'paid'];
+                            if (!completedStages.includes(pipelineJob.stage)) {
+                                projectVisits.push(visit);
+                            }
+                        }
+                    } else {
+                        // If no pipeline jobs loaded yet, include the visit
+                        projectVisits.push(visit);
+                    }
                 } else {
                     // This is a maintenance visit - we'll filter these
                     maintenanceVisits.push(visit);
@@ -4019,7 +4067,30 @@ This notification was generated automatically by Roundwood Route Manager.
 
         // Create visit card HTML
         function createVisitCard(visit) {
+            // Validate scheduledDate
+            if (!visit.scheduledDate || visit.scheduledDate === 'Invalid Date') {
+                return `
+                    <div class="visit-card" style="background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                        <h3 style="margin: 0 0 0.5rem 0; color: #dc2626;">${visit.siteName || 'Unknown Site'}</h3>
+                        <div style="color: #991b1b; margin-bottom: 0.75rem;">⚠️ Invalid or missing visit date</div>
+                        <div style="color: #7f1d1d; font-size: 0.875rem;">Please edit this site and set a valid next visit date.</div>
+                    </div>
+                `;
+            }
+            
             const visitDate = new Date(visit.scheduledDate);
+            
+            // Double-check the date is valid
+            if (isNaN(visitDate.getTime())) {
+                return `
+                    <div class="visit-card" style="background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                        <h3 style="margin: 0 0 0.5rem 0; color: #dc2626;">${visit.siteName || 'Unknown Site'}</h3>
+                        <div style="color: #991b1b; margin-bottom: 0.75rem;">⚠️ Invalid date: ${visit.scheduledDate}</div>
+                        <div style="color: #7f1d1d; font-size: 0.875rem;">Please edit this site and set a valid next visit date.</div>
+                    </div>
+                `;
+            }
+            
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             visitDate.setHours(0, 0, 0, 0);
@@ -4195,7 +4266,18 @@ This notification was generated automatically by Roundwood Route Manager.
             // Check completed visits
             if (window.visits) {
                 window.visits.forEach(visit => {
-                    if (visit.status === 'completed' && !visit.invoiced) {
+                    // Check ALL possible invoice fields (old and new systems)
+                    const isInvoiced = 
+                        visit.invoiced === true ||           // Old boolean field
+                        visit.invoiced === 'true' ||         // String version
+                        visit.invoiceStatus === 'sent' ||    // New field
+                        visit.invoiceStatus === 'pending' || // Alternative status
+                        visit.invoiceSent === true ||        // Alternative field name
+                        visit.invoicedDate ||                // Has an invoice date
+                        visit.invoiceSentDate;               // Has a sent date
+                    
+                    // Show visits that are completed but not yet invoiced
+                    if (visit.status === 'completed' && !isInvoiced) {
                         needsInvoice.push({
                             type: 'visit',
                             id: visit.id,
@@ -4203,6 +4285,17 @@ This notification was generated automatically by Roundwood Route Manager.
                             siteAddress: visit.siteAddress,
                             amount: visit.price,
                             completedDate: visit.completedDate,
+                            ...visit
+                        });
+                    } else if (visit.status === 'completed' && isInvoiced) {
+                        // Show visits that have been invoiced but payment not received
+                        awaitingPayment.push({
+                            type: 'visit',
+                            id: visit.id,
+                            siteName: visit.siteName,
+                            siteAddress: visit.siteAddress,
+                            amount: visit.price,
+                            invoicedDate: visit.invoiceSentDate || visit.invoicedDate || visit.completedDate,
                             ...visit
                         });
                     }
@@ -4313,6 +4406,9 @@ This notification was generated automatically by Roundwood Route Manager.
                             <button class="btn btn-secondary" onclick="markAsPaid('${item.id}')" style="flex: 1;">
                                 ✓ Mark as Paid
                             </button>
+                            <button class="btn btn-danger" onclick="deletePipelineJob('${item.id}')" style="flex: 1;">
+                                🗑️ Delete
+                            </button>
                         </div>
                     </div>
                 `;
@@ -4353,9 +4449,14 @@ This notification was generated automatically by Roundwood Route Manager.
                             </div>
                         </div>
                         
-                        <button class="btn btn-success" onclick="markVisitAsInvoiced('${item.id}')" style="width: 100%;">
-                            ✓ Mark as Invoiced
-                        </button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-success" onclick="markVisitAsInvoiced('${item.id}')" style="flex: 1;">
+                                ✓ Mark as Invoiced
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteVisit('${item.id}')" style="flex: 1;">
+                                🗑️ Delete
+                            </button>
+                        </div>
                     </div>
                 `;
             }
@@ -4370,6 +4471,12 @@ This notification was generated automatically by Roundwood Route Manager.
             let borderColor = daysSince > 30 ? '#ef4444' : daysSince > 14 ? '#f59e0b' : '#3b82f6';
 
             const amount = item.amount ? `£${parseFloat(item.amount).toFixed(2)}` : '£0.00';
+            
+            const isPipeline = item.type === 'pipeline';
+            const title = isPipeline ? item.customerName : item.siteName;
+            const subtitle = isPipeline ? item.projectType : item.siteAddress;
+            const typeLabel = isPipeline ? `PROJECT • JOB #${item.jobReference}` : 'VISIT';
+            const buttonAction = isPipeline ? `markAsPaid('${item.id}')` : `markVisitAsPaid('${item.id}')`;
 
             return `
                 <div class="payment-card" style="
@@ -4383,13 +4490,13 @@ This notification was generated automatically by Roundwood Route Manager.
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                         <div>
                             <div style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
-                                PROJECT • JOB #${item.jobReference}
+                                ${typeLabel}
                             </div>
                             <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 600; color: var(--gray-900);">
-                                ${item.customerName}
+                                ${title}
                             </h3>
                             <div style="color: var(--gray-600); font-size: 0.95rem;">
-                                ${item.projectType}
+                                ${subtitle}
                             </div>
                         </div>
                         <span class="badge badge-${urgencyClass}" style="font-size: 0.75rem; font-weight: 600;">
@@ -4406,9 +4513,14 @@ This notification was generated automatically by Roundwood Route Manager.
                         </div>
                     </div>
                     
-                    <button class="btn btn-success" onclick="markAsPaid('${item.id}')" style="width: 100%;">
-                        💰 Mark as Paid
-                    </button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-success" onclick="${buttonAction}" style="flex: 1;">
+                            💰 Mark as Paid
+                        </button>
+                        <button class="btn btn-danger" onclick="${isPipeline ? `deletePipelineJob('${item.id}')` : `deleteVisit('${item.id}')`}" style="flex: 1;">
+                            🗑️ Delete
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -4661,6 +4773,26 @@ This notification was generated automatically by Roundwood Route Manager.
                         element.value = value;
                     } else {
                         console.warn(`Field ${fieldId} not found`);
+                    }
+                }
+                
+                // Hide "First Visit Date" field and show "Next Visit Date" field when editing
+                const firstVisitGroup = document.getElementById('siteFirstVisit')?.parentElement;
+                const nextVisitGroup = document.getElementById('nextVisitDateGroup');
+                
+                if (firstVisitGroup) firstVisitGroup.style.display = 'none';
+                if (nextVisitGroup) nextVisitGroup.style.display = 'block';
+                
+                // Find the earliest pending visit for this site and populate the date
+                const siteVisits = window.visits.filter(v => v.siteId === siteId && v.status === 'pending');
+                if (siteVisits.length > 0) {
+                    const earliestVisit = siteVisits.sort((a, b) => 
+                        new Date(a.scheduledDate) - new Date(b.scheduledDate)
+                    )[0];
+                    
+                    const nextVisitField = document.getElementById('siteNextVisit');
+                    if (nextVisitField && earliestVisit.scheduledDate) {
+                        nextVisitField.value = earliestVisit.scheduledDate;
                     }
                 }
 
@@ -5154,7 +5286,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 return;
             }
 
-            const project = projects.find(p => p.id === projectId);
+            const project = window.projects.find(p => p.id === projectId);
             if (!project) return;
 
             try {
@@ -5164,6 +5296,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 await window.dbUpdate(window.dbRef(window.database, `users/${userId}/projects/${projectId}`), {
                     status: 'completed',
                     completedBy: completedBy,
+                    completedDate: actualEndDate,
                     actualCompletionDate: actualEndDate,
                     completionNotes: completionNotes,
                     customerName: customerName,
@@ -5172,6 +5305,9 @@ This notification was generated automatically by Roundwood Route Manager.
                 });
 
                 closeCompleteProjectModal();
+                
+                // Update History tab
+                if (typeof renderHistory === 'function') renderHistory();
                 
                 // Send email notification
                 sendProjectInvoiceEmail(project, completedBy, actualEndDate, completionNotes, customerName);
@@ -5715,57 +5851,99 @@ This notification was generated automatically by Roundwood Route Manager.
         function renderHistory() {
             const container = document.getElementById('historyContainer');
             
-            const completedVisits = visits
+            if (!window.visits) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📜</div>
+                        <div class="empty-state-title">Loading history...</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Get completed maintenance visits
+            const completedVisits = window.visits
                 .filter(v => v.status === 'completed')
-                .sort((a, b) => new Date(b.completedDate) - new Date(a.completedDate))
-                .slice(0, 20);
+                .map(v => ({
+                    ...v,
+                    type: 'maintenance',
+                    sortDate: new Date(v.completedDate || v.scheduledDate)
+                }));
+            
+            // Get completed projects
+            const completedProjects = window.projects
+                ? window.projects
+                    .filter(p => p.status === 'completed')
+                    .map(p => ({
+                        ...p,
+                        type: 'project',
+                        siteName: p.customerName || p.name,
+                        completedDate: p.completedDate,
+                        sortDate: new Date(p.completedDate)
+                    }))
+                : [];
+            
+            // Combine and sort by completion date (newest first)
+            const allCompleted = [...completedVisits, ...completedProjects]
+                .sort((a, b) => b.sortDate - a.sortDate);
 
-            if (completedVisits.length === 0) {
+            if (allCompleted.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📜</div>
                         <div class="empty-state-title">No history yet</div>
-                        <div class="empty-state-text">Completed visits will appear here</div>
+                        <div class="empty-state-text">Completed visits and projects will appear here</div>
                     </div>
                 `;
                 return;
             }
 
-            container.innerHTML = completedVisits.map(visit => {
-                const completedDate = new Date(visit.completedDate);
+            container.innerHTML = allCompleted.map(item => {
+                const completedDate = new Date(item.completedDate);
                 const formattedDate = completedDate.toLocaleDateString('en-GB', { 
                     day: 'numeric', 
                     month: 'short', 
                     year: 'numeric' 
                 });
 
-                const invoiceStatus = visit.invoiceStatus === 'sent' ? 'Invoiced' : 'Awaiting Invoice';
-                const invoiceClass = visit.invoiceStatus === 'sent' ? 'status-completed' : 'status-pending';
+                const isProject = item.type === 'project';
+                const typeLabel = isProject 
+                    ? '<span style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">🎯 PROJECT</span>'
+                    : '<span style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">🔧 MAINTENANCE</span>';
+                
+                const invoiceStatus = item.invoiceStatus === 'sent' ? 'Invoiced' : 'Awaiting Invoice';
+                const invoiceClass = item.invoiceStatus === 'sent' ? 'status-completed' : 'status-pending';
 
                 return `
-                    <div class="visit-card completed">
+                    <div class="visit-card completed" style="border-left: 4px solid ${isProject ? '#8b5cf6' : '#10b981'};">
                         <div class="visit-header">
                             <div>
-                                <div class="visit-site">${visit.siteName}</div>
+                                <div class="visit-site">${item.siteName}${typeLabel}</div>
                                 <div class="visit-date">${formattedDate}</div>
                             </div>
                             <span class="visit-status ${invoiceClass}">${invoiceStatus}</span>
                         </div>
                         <div class="site-meta" style="margin-top: 1rem;">
-                            ${visit.completedBy ? `
+                            ${item.completedBy ? `
                                 <div class="meta-item">
                                     <div class="meta-label">Completed By</div>
-                                    <div class="meta-value">${visit.completedBy}</div>
+                                    <div class="meta-value">${item.completedBy}</div>
                                 </div>
                             ` : ''}
                             <div class="meta-item">
                                 <div class="meta-label">Amount</div>
-                                <div class="meta-value">£${visit.price ? parseFloat(visit.price).toFixed(2) : '0.00'}</div>
+                                <div class="meta-value">£${item.price ? parseFloat(item.price).toFixed(2) : '0.00'}</div>
                             </div>
-                            ${visit.completionNotes ? `
+                            ${item.completionNotes ? `
                                 <div class="meta-item" style="grid-column: 1 / -1;">
                                     <div class="meta-label">Notes</div>
-                                    <div class="meta-value">${visit.completionNotes}</div>
+                                    <div class="meta-value">${item.completionNotes}</div>
+                                </div>
+                            ` : ''}
+                            ${isProject && item.description ? `
+                                <div class="meta-item" style="grid-column: 1 / -1;">
+                                    <div class="meta-label">Description</div>
+                                    <div class="meta-value">${item.description}</div>
                                 </div>
                             ` : ''}
                         </div>
@@ -5781,8 +5959,22 @@ This notification was generated automatically by Roundwood Route Manager.
             const todayStr = new Date().toISOString().split('T')[0];
             
             // Get today's visits
-            const todayVisits = visits
-                .filter(v => v.status === 'pending' && !v.hidden && v.scheduledDate === todayStr)
+            const todayVisits = window.visits
+                .filter(v => {
+                    if (v.status !== 'pending' || v.hidden || v.scheduledDate !== todayStr) return false;
+                    // If visit is linked to a pipeline job, check job status
+                    if (v.pipelineJobId && window.pipelineJobs) {
+                        const pipelineJob = window.pipelineJobs.find(j => j.id === v.pipelineJobId);
+                        if (!pipelineJob) {
+                            // Can't find job - show the visit
+                            return true;
+                        }
+                        // Found job - only exclude if it's in completed stages
+                        const completedStages = ['complete', 'invoiced', 'paid'];
+                        return !completedStages.includes(pipelineJob.stage);
+                    }
+                    return true;
+                })
                 .map(v => ({ ...v, type: 'visit' }));
             
             // Get today's projects
@@ -5985,10 +6177,22 @@ This notification was generated automatically by Roundwood Route Manager.
             const threeDaysStr = threeDaysFromNow.toISOString().split('T')[0];
             
             // Get visits between tomorrow and 3 days from now
-            const upcomingVisits = visits
+            const upcomingVisits = window.visits
                 .filter(v => {
                     if (v.status !== 'pending' || v.hidden) return false;
-                    return v.scheduledDate > todayStr && v.scheduledDate <= threeDaysStr;
+                    if (!(v.scheduledDate > todayStr && v.scheduledDate <= threeDaysStr)) return false;
+                    // If visit is linked to a pipeline job, check job status
+                    if (v.pipelineJobId && window.pipelineJobs) {
+                        const pipelineJob = window.pipelineJobs.find(j => j.id === v.pipelineJobId);
+                        if (!pipelineJob) {
+                            // Can't find job - show the visit
+                            return true;
+                        }
+                        // Found job - only exclude if it's in completed stages
+                        const completedStages = ['complete', 'invoiced', 'paid'];
+                        return !completedStages.includes(pipelineJob.stage);
+                    }
+                    return true;
                 })
                 .sort((a, b) => a.siteName.localeCompare(b.siteName));
             
@@ -6069,11 +6273,15 @@ Roundwood Solutions Limited
             const today = new Date().toISOString().split('T')[0];
             
             // Count invoices from both pipeline and visits
-            let totalNeedsInvoice = 0;
+            // This should count EVERYTHING in Invoice Tracking (both sections)
+            let totalInvoiceTracking = 0;
             
             if (window.pipelineJobs) {
-                const pipelineInvoices = window.pipelineJobs.filter(j => j.stage === 'complete' || j.stage === 'invoiced').length;
-                totalNeedsInvoice += pipelineInvoices;
+                // Count pipeline jobs that need invoice OR are awaiting payment
+                const pipelineInvoices = window.pipelineJobs.filter(j => 
+                    j.stage === 'complete' || j.stage === 'invoiced'
+                ).length;
+                totalInvoiceTracking += pipelineInvoices;
                 
                 // Update pipeline count
                 const pipelineCount = window.pipelineJobs.length;
@@ -6102,7 +6310,21 @@ Roundwood Solutions Limited
                 });
                 
                 // Separate into projects and maintenance
-                const projectVisits = pendingVisits.filter(v => v.pipelineJobId);
+                const projectVisits = pendingVisits.filter(v => {
+                    if (!v.pipelineJobId) return false;
+                    // Check pipeline job status
+                    if (window.pipelineJobs) {
+                        const pipelineJob = window.pipelineJobs.find(j => j.id === v.pipelineJobId);
+                        if (!pipelineJob) {
+                            // Can't find job - include the visit
+                            return true;
+                        }
+                        // Found job - only exclude if it's in completed stages
+                        const completedStages = ['complete', 'invoiced', 'paid'];
+                        return !completedStages.includes(pipelineJob.stage);
+                    }
+                    return true; // If pipeline jobs not loaded, include it
+                });
                 const maintenanceVisits = pendingVisits.filter(v => !v.pipelineJobId);
                 
                 // For maintenance: only count NEXT visit per site
@@ -6128,15 +6350,15 @@ Roundwood Solutions Limited
                     upcomingBadge.textContent = totalUpcoming;
                 }
                 
-                // Count completed visits not yet invoiced
-                const visitInvoices = window.visits.filter(v => v.status === 'completed' && !v.invoiced).length;
-                totalNeedsInvoice += visitInvoices;
+                // Count ALL completed visits (both awaiting invoice AND awaiting payment)
+                const completedVisitsCount = window.visits.filter(v => v.status === 'completed').length;
+                totalInvoiceTracking += completedVisitsCount;
             }
             
             // Update invoice badge
             const uninvoicedBadge = document.getElementById('uninvoicedCount');
             if (uninvoicedBadge) {
-                uninvoicedBadge.textContent = totalNeedsInvoice;
+                uninvoicedBadge.textContent = totalInvoiceTracking;
             }
             
             // Update legacy project count if element exists
@@ -7344,7 +7566,7 @@ Roundwood Solutions Limited
                     visitId: visitId  // Link to created visit
                 });
                 
-                alert(`✅ Work scheduled for ${new Date(scheduledDate).toLocaleDateString('en-GB')}!\nVisit added to Upcoming Visits tab.`);
+                alert(`✅ Work scheduled for ${new Date(scheduledDate).toLocaleDateString('en-GB')}!\nVisit added to calendar.`);
                 
                 // Refresh views
                 if (typeof renderVisits === 'function') renderVisits();
@@ -7492,11 +7714,31 @@ Roundwood Solutions Limited
             const userId = window.SHARED_TEAM_ID;  // All team members use same data location
                 const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
                 await window.dbUpdate(visitRef, { 
-                    invoiced: true, 
-                    invoicedDate: new Date().toISOString() 
+                    // Set BOTH fields for backward compatibility
+                    invoiced: true,  // Old field
+                    invoiceStatus: 'sent',  // New field
+                    invoiceSentDate: new Date().toISOString() 
                 });
                 alert('✅ Visit marked as invoiced!');
                 if (typeof renderInvoices === 'function') renderInvoices();
+                if (typeof renderHistory === 'function') renderHistory();
+                if (typeof updateStats === 'function') updateStats();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating visit');
+            }
+        };
+        
+        window.markVisitAsPaid = async function(visitId) {
+            try {
+                
+            const userId = window.SHARED_TEAM_ID;  // All team members use same data location
+                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                // Remove from invoice tracking by deleting it or archiving
+                await window.dbRemove(visitRef);
+                alert('✅ Payment received! Visit archived.');
+                if (typeof renderInvoices === 'function') renderInvoices();
+                if (typeof renderHistory === 'function') renderHistory();
                 if (typeof updateStats === 'function') updateStats();
             } catch (error) {
                 console.error('Error:', error);
