@@ -6468,8 +6468,11 @@ Roundwood Solutions Limited
 
         // Calculate shift pattern (2 days, 2 nights, 4 off starting Jan 21, 2026)
         function getShiftForDate(date) {
-            const startDate = new Date(2026, 0, 21); // Jan 21, 2026
-            const daysSinceStart = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+            // Normalize both dates to midnight UTC to avoid timezone issues
+            const startDate = new Date(Date.UTC(2026, 0, 21)); // Jan 21, 2026 at midnight UTC
+            const checkDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            
+            const daysSinceStart = Math.floor((checkDate - startDate) / (1000 * 60 * 60 * 24));
             
             if (daysSinceStart < 0) return null; // Before shift pattern starts
             
@@ -6560,6 +6563,7 @@ Roundwood Solutions Limited
             const remainingCells = 7 - (totalCells % 7);
             if (remainingCells < 7) {
                 for (let day = 1; day <= remainingCells; day++) {
+                    // Don't show shift badges for next month preview days
                     html += `<div class="calendar-day other-month"><div class="calendar-day-number">${day}</div></div>`;
                 }
             }
