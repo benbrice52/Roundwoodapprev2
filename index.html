@@ -6134,9 +6134,12 @@ This notification was generated automatically by Roundwood Route Manager.
                                         £${item.price ? parseFloat(item.price).toFixed(2) : '0.00'}
                                     </div>
                                 </div>
-                                <div>
+                                <div style="display: flex; gap: 0.5rem;">
                                     <button class="btn btn-success" onclick="openCompleteVisitModal('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">
                                         ✓ Complete Visit
+                                    </button>
+                                    <button class="btn btn-danger" onclick="deleteDueTodayVisit('${item.id}', '${item.siteName}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem; background: #ef4444;" title="Delete this visit">
+                                        🗑️ Delete
                                     </button>
                                 </div>
                             </div>
@@ -7952,6 +7955,31 @@ Roundwood Solutions Limited
                 
                 // Refresh views
                 if (typeof renderVisits === 'function') renderVisits();
+                if (typeof updateStats === 'function') updateStats();
+                
+            } catch (error) {
+                console.error('Error deleting visit:', error);
+                alert('Error deleting visit. Please try again.');
+            }
+        };
+
+        // Delete visit from Due Today section
+        window.deleteDueTodayVisit = async function(visitId, siteName) {
+            if (!confirm(`Delete visit for "${siteName}"?\n\nThis visit will be permanently removed.\n\nThis action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const userId = window.SHARED_TEAM_ID;
+                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${visitId}`);
+                await window.dbRemove(visitRef);
+                
+                alert('✅ Visit deleted successfully');
+                
+                // Refresh all relevant views
+                if (typeof renderDueToday === 'function') renderDueToday();
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof renderCalendar === 'function') renderCalendar();
                 if (typeof updateStats === 'function') updateStats();
                 
             } catch (error) {
