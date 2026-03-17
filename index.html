@@ -1425,12 +1425,12 @@
         <div class="tab-content">
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-pane active">
-                <!-- Due Today (Collapsible) -->
+                <!-- Due Today & Overdue (Collapsible) -->
                 <div id="dueTodayCard" style="display: none;">
                     <div class="collapsible-section open">
                         <div class="collapsible-header" onclick="toggleSection(this)" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e;">
                             <div class="collapsible-title">
-                                <span>📅 Due Today</span>
+                                <span>📅 Due Today & Overdue</span>
                                 <span class="collapsible-badge" id="dueTodayBadge">0</span>
                             </div>
                             <span class="collapsible-arrow">▼</span>
@@ -6033,15 +6033,17 @@ This notification was generated automatically by Roundwood Route Manager.
         }
 
 
-        // Render Visit Reminders (3 days ahead)
-        // Render Due Today on Dashboard
+        // Render Due Today on Dashboard (includes overdue visits)
         function renderDueToday() {
             const todayStr = new Date().toISOString().split('T')[0];
             
-            // Get today's visits
+            // Get today's AND overdue visits
             const todayVisits = window.visits
                 .filter(v => {
-                    if (v.status !== 'pending' || v.hidden || v.scheduledDate !== todayStr) return false;
+                    if (v.status !== 'pending' || v.hidden) return false;
+                    // Show if scheduled for today OR overdue (scheduled before today)
+                    if (v.scheduledDate > todayStr) return false; // Skip future visits
+                    
                     // If visit is linked to a pipeline job, check job status
                     if (v.pipelineJobId && window.pipelineJobs) {
                         const pipelineJob = window.pipelineJobs.find(j => j.id === v.pipelineJobId);
@@ -6055,7 +6057,11 @@ This notification was generated automatically by Roundwood Route Manager.
                     }
                     return true;
                 })
-                .map(v => ({ ...v, type: 'visit' }));
+                .map(v => {
+                    // Calculate if overdue
+                    const isOverdue = v.scheduledDate < todayStr;
+                    return { ...v, type: 'visit', isOverdue };
+                });
             
             // Get today's projects
             const todayProjects = projects
@@ -6101,15 +6107,30 @@ This notification was generated automatically by Roundwood Route Manager.
                         </div>
                     `;
                 } else {
+                    // Calculate days overdue
+                    const scheduledDate = new Date(item.scheduledDate);
+                    const today = new Date();
+                    const daysOverdue = Math.floor((today - scheduledDate) / (1000 * 60 * 60 * 24));
+                    
+                    // Determine border color and status
+                    const borderColor = item.isOverdue ? '#ef4444' : 'var(--success)';
+                    const statusColor = item.isOverdue ? '#dc2626' : 'var(--success)';
+                    const statusText = item.isOverdue 
+                        ? `⚠️ OVERDUE ${daysOverdue} day${daysOverdue > 1 ? 's' : ''}`
+                        : '📅 Due Today';
+                    
                     return `
-                        <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid var(--success);">
+                        <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.75rem; border-left: 3px solid ${borderColor};">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <div style="font-weight: 600; color: #1f2937;">${item.siteName}</div>
                                     <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
                                         ${item.siteAddress}
                                     </div>
-                                    <div style="font-size: 0.85rem; color: var(--success); margin-top: 0.375rem; font-weight: 500;">
+                                    <div style="font-size: 0.85rem; color: ${statusColor}; margin-top: 0.375rem; font-weight: 600;">
+                                        ${statusText}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem;">
                                         £${item.price ? parseFloat(item.price).toFixed(2) : '0.00'}
                                     </div>
                                 </div>
