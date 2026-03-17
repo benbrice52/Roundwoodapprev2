@@ -6138,7 +6138,7 @@ This notification was generated automatically by Roundwood Route Manager.
                                     <button class="btn btn-success" onclick="openCompleteVisitModal('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">
                                         ✓ Complete Visit
                                     </button>
-                                    <button class="btn btn-danger" onclick="deleteDueTodayVisit('${item.id}', '${item.siteName}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem; background: #ef4444;" title="Delete this visit">
+                                    <button class="btn btn-danger" onclick="deleteDueTodayVisit('${item.id}')" style="font-size: 0.85rem; padding: 0.375rem 0.75rem; background: #ef4444;" title="Delete this visit">
                                         🗑️ Delete
                                     </button>
                                 </div>
@@ -7964,7 +7964,16 @@ Roundwood Solutions Limited
         };
 
         // Delete visit from Due Today section
-        window.deleteDueTodayVisit = async function(visitId, siteName) {
+        window.deleteDueTodayVisit = async function(visitId) {
+            // Find the visit to get the site name
+            const visit = window.visits.find(v => v.id === visitId);
+            if (!visit) {
+                alert('Visit not found');
+                return;
+            }
+            
+            const siteName = visit.siteName || 'Unknown Site';
+            
             if (!confirm(`Delete visit for "${siteName}"?\n\nThis visit will be permanently removed.\n\nThis action cannot be undone.`)) {
                 return;
             }
