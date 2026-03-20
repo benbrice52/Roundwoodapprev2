@@ -3269,6 +3269,33 @@
         console.log('Firebase initialized successfully');
     </script>
 
+    <!-- Edit Visit Date Modal -->
+    <div id="editVisitDateModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">📅 Reschedule Visit</h2>
+                <button class="btn-close" onclick="closeEditVisitDateModal()">×</button>
+            </div>
+            
+            <div style="padding: 1.5rem;">
+                <div id="editVisitInfo" style="background: var(--gray-100); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <div style="font-weight: 600; font-size: 1.125rem; color: var(--gray-900); margin-bottom: 0.25rem;" id="editVisitSiteName"></div>
+                    <div style="font-size: 0.875rem; color: var(--gray-600);" id="editVisitCurrentDate"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newVisitDate" style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Select New Date</label>
+                    <input type="date" id="newVisitDate" class="form-control" style="font-size: 1rem; padding: 0.75rem; cursor: pointer;">
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditVisitDateModal()" style="flex: 1;">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="saveVisitDate()" style="flex: 1;">✓ Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Send Invoice Request Email using mailto
         function sendInvoiceEmail(visit) {
@@ -6575,7 +6602,12 @@ Roundwood Solutions Limited
                 
                 // Events
                 events.forEach(event => {
-                    const clickHandler = event.isCalendarEvent ? `onclick="editCalendarEvent('${event.id}')" style="cursor: pointer;"` : '';
+                    let clickHandler = '';
+                    if (event.isCalendarEvent) {
+                        clickHandler = `onclick="editCalendarEvent('${event.id}')" style="cursor: pointer;"`;
+                    } else if (event.isVisit) {
+                        clickHandler = `onclick="editVisitDate('${event.visitId}')" style="cursor: pointer;"`;
+                    }
                     html += `<div class="calendar-event ${event.type}" ${clickHandler}>${event.icon} ${event.title}</div>`;
                 });
                 
@@ -6619,7 +6651,9 @@ Roundwood Solutions Limited
                         events.push({
                             type: visit.pipelineJobId ? 'project' : (isOverdue ? 'overdue' : 'maintenance'),
                             icon: visit.pipelineJobId ? '🎯' : (isOverdue ? '⚠️' : '🔧'),
-                            title: visit.siteName || visit.customerName || 'Visit'
+                            title: visit.siteName || visit.customerName || 'Visit',
+                            visitId: visit.id,  // Add visitId so we can edit it
+                            isVisit: true  // Flag to identify as a visit event
                         });
                     }
                 });
@@ -7996,6 +8030,80 @@ Roundwood Solutions Limited
                 alert('Error deleting visit. Please try again.');
             }
         };
+
+        // Edit visit scheduled date from calendar
+        let currentEditingVisitId = null;
+
+        window.editVisitDate = function(visitId) {
+            // Find the visit
+            const visit = window.visits.find(v => v.id === visitId);
+            if (!visit) {
+                alert('Visit not found');
+                return;
+            }
+            
+            // Store the visit ID for later
+            currentEditingVisitId = visitId;
+            
+            // Populate modal with visit info
+            document.getElementById('editVisitSiteName').textContent = visit.siteName || 'Unknown Site';
+            document.getElementById('editVisitCurrentDate').textContent = 
+                `Current: ${new Date(visit.scheduledDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`;
+            document.getElementById('newVisitDate').value = visit.scheduledDate || '';
+            
+            // Show modal
+            document.getElementById('editVisitDateModal').style.display = 'flex';
+        };
+
+        window.closeEditVisitDateModal = function() {
+            document.getElementById('editVisitDateModal').style.display = 'none';
+            currentEditingVisitId = null;
+        };
+
+        window.saveVisitDate = async function() {
+            const newDate = document.getElementById('newVisitDate').value;
+            
+            if (!newDate) {
+                alert('Please select a date');
+                return;
+            }
+            
+            if (!currentEditingVisitId) {
+                alert('Error: No visit selected');
+                return;
+            }
+            
+            try {
+                const userId = window.SHARED_TEAM_ID;
+                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${currentEditingVisitId}`);
+                await window.dbUpdate(visitRef, {
+                    scheduledDate: newDate
+                });
+                
+                // Close modal
+                closeEditVisitDateModal();
+                
+                alert(`✅ Visit date updated to ${new Date(newDate).toLocaleDateString('en-GB')}`);
+                
+                // Refresh all relevant views
+                if (typeof renderDueToday === 'function') renderDueToday();
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof renderCalendar === 'function') renderCalendar();
+                if (typeof updateStats === 'function') updateStats();
+                
+            } catch (error) {
+                console.error('Error updating visit date:', error);
+                alert('Error updating visit date. Please try again.');
+            }
+        };
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('editVisitDateModal');
+            if (event.target === modal) {
+                closeEditVisitDateModal();
+            }
+        });
 
         // ========================================
         // PIPELINE FORM SUBMISSION HANDLERS
