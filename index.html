@@ -1237,6 +1237,22 @@
             border-left-color: #ef4444;
         }
 
+        .calendar-event.completed {
+            background: #f3f4f6;
+            border-left-color: #10b981;
+            opacity: 0.8;
+            cursor: default;
+        }
+
+        .calendar-event.completed:hover {
+            transform: none;
+        }
+
+        .calendar-event.completed .event-title {
+            text-decoration: line-through;
+            color: #6b7280;
+        }
+
         .calendar-legend {
             display: flex;
             gap: 1.5rem;
@@ -1521,6 +1537,10 @@
                                     <div class="calendar-legend-item">
                                         <div class="calendar-legend-color" style="background: #fee2e2; border-left: 3px solid #ef4444;"></div>
                                         <span>⚠️ Overdue</span>
+                                    </div>
+                                    <div class="calendar-legend-item">
+                                        <div class="calendar-legend-color" style="background: #f3f4f6; border-left: 3px solid #10b981;"></div>
+                                        <span>✓ Completed</span>
                                     </div>
                                     <div class="calendar-legend-item">
                                         <div class="calendar-legend-color" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.65rem;">D</div>
@@ -3648,6 +3668,8 @@ This notification was generated automatically by Roundwood Route Manager.
         document.getElementById('addSiteForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            console.log('Form submitted! editingSiteId:', editingSiteId);
+            
             const frequencyValue = document.getElementById('siteFrequency').value;
             const siteData = {
                 name: document.getElementById('siteName').value,
@@ -3659,20 +3681,26 @@ This notification was generated automatically by Roundwood Route Manager.
                 notes: document.getElementById('siteNotes').value
             };
 
+            console.log('Site data to save:', siteData);
+
             try {
                 
             const userId = window.SHARED_TEAM_ID;  // All team members use same data location
                 
                 if (editingSiteId) {
+                    console.log('Updating site with ID:', editingSiteId);
                     // UPDATE existing site
                     await window.dbUpdate(window.dbRef(window.database, `users/${userId}/sites/${editingSiteId}`), siteData);
+                    console.log('Site updated in database');
 
                     // Update all pending visits for this site
                     const siteVisits = window.visits.filter(v => v.siteId === editingSiteId && v.status === 'pending');
+                    console.log('Found', siteVisits.length, 'pending visits to update');
                     
                     // Check if there's a next visit date to update
                     const nextVisitDateField = document.getElementById('siteNextVisit');
                     const nextVisitDate = nextVisitDateField ? nextVisitDateField.value : null;
+                    console.log('Next visit date:', nextVisitDate);
                     
                     if (nextVisitDate && siteVisits.length > 0) {
                         // Update the earliest visit with the new date
@@ -3680,6 +3708,7 @@ This notification was generated automatically by Roundwood Route Manager.
                             new Date(a.scheduledDate) - new Date(b.scheduledDate)
                         )[0];
                         
+                        console.log('Updating earliest visit:', earliestVisit.id);
                         await window.dbUpdate(window.dbRef(window.database, `users/${userId}/visits/${earliestVisit.id}`), {
                             siteName: siteData.name,
                             siteAddress: siteData.address,
@@ -3709,9 +3738,11 @@ This notification was generated automatically by Roundwood Route Manager.
                         }
                     }
 
+                    console.log('All updates complete!');
                     alert('✅ Site updated successfully!');
                     closeAddSiteModal();
                 } else {
+                    console.log('Adding new site');
                     // ADD new site
                     siteData.firstVisit = document.getElementById('siteFirstVisit').value;
                     siteData.createdAt = new Date().toISOString();
@@ -3739,7 +3770,8 @@ This notification was generated automatically by Roundwood Route Manager.
                 }
             } catch (error) {
                 console.error('Error saving site:', error);
-                alert('Error saving site. Please try again.');
+                console.error('Error details:', error.message, error.stack);
+                alert('❌ Error saving site: ' + error.message + '. Check console for details.');
             }
         });
 
@@ -5790,7 +5822,10 @@ This notification was generated automatically by Roundwood Route Manager.
                     } else if (visit.frequency === 'seasonal') {
                         // Seasonal frequency - fortnightly Mar-Oct, monthly Nov-Feb
                         const nextVisitDate = new Date(visit.scheduledDate);
-                        const currentMonth = nextVisitDate.getMonth(); // 0-11 (0=Jan, 11=Dec)
+                        
+                        // Check CURRENT month (today), not the scheduled visit's month
+                        const today = new Date();
+                        const currentMonth = today.getMonth(); // 0-11 (0=Jan, 11=Dec)
                         
                         // March-October (months 2-9) = Fortnightly (14 days)
                         // November-February (months 10-11, 0-1) = Monthly (30 days)
@@ -6605,10 +6640,11 @@ Roundwood Solutions Limited
                     let clickHandler = '';
                     if (event.isCalendarEvent) {
                         clickHandler = `onclick="editCalendarEvent('${event.id}')" style="cursor: pointer;"`;
-                    } else if (event.isVisit) {
+                    } else if (event.isVisit && !event.isCompleted) {
+                        // Only allow editing pending visits (not completed ones)
                         clickHandler = `onclick="editVisitDate('${event.visitId}')" style="cursor: pointer;"`;
                     }
-                    html += `<div class="calendar-event ${event.type}" ${clickHandler}>${event.icon} ${event.title}</div>`;
+                    html += `<div class="calendar-event ${event.type}" ${clickHandler}>${event.icon} <span class="event-title">${event.title}</span></div>`;
                 });
                 
                 html += '</div>';
@@ -6634,7 +6670,7 @@ Roundwood Solutions Limited
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            // Get maintenance visits
+            // Get maintenance visits (ONLY pending ones)
             if (window.visits) {
                 window.visits.forEach(visit => {
                     if (visit.scheduledDate === dateStr && visit.status !== 'completed') {
@@ -6652,8 +6688,8 @@ Roundwood Solutions Limited
                             type: visit.pipelineJobId ? 'project' : (isOverdue ? 'overdue' : 'maintenance'),
                             icon: visit.pipelineJobId ? '🎯' : (isOverdue ? '⚠️' : '🔧'),
                             title: visit.siteName || visit.customerName || 'Visit',
-                            visitId: visit.id,  // Add visitId so we can edit it
-                            isVisit: true  // Flag to identify as a visit event
+                            visitId: visit.id,
+                            isVisit: true
                         });
                     }
                 });
@@ -6696,7 +6732,7 @@ Roundwood Solutions Limited
             // Get project durations from pipeline jobs with scheduled work
             if (window.pipelineJobs && window.visits) {
                 window.pipelineJobs.forEach(job => {
-                    // Find if this job has a scheduled visit
+                    // Find if this job has a scheduled visit that's NOT completed
                     const jobVisit = window.visits.find(v => v.pipelineJobId === job.id && v.status !== 'completed');
                     
                     if (jobVisit && job.estimatedEndDate) {
