@@ -3650,9 +3650,11 @@ This notification was generated automatically by Roundwood Route Manager.
             
             // Reset field visibility for adding new sites
             const firstVisitGroup = document.getElementById('siteFirstVisit')?.parentElement;
+            const firstVisitField = document.getElementById('siteFirstVisit');
             const nextVisitGroup = document.getElementById('nextVisitDateGroup');
             
             if (firstVisitGroup) firstVisitGroup.style.display = 'block';
+            if (firstVisitField) firstVisitField.setAttribute('required', ''); // Re-add required for new sites
             if (nextVisitGroup) nextVisitGroup.style.display = 'none';
             
             // Reset button text
@@ -4842,9 +4844,11 @@ This notification was generated automatically by Roundwood Route Manager.
                 
                 // Hide "First Visit Date" field and show "Next Visit Date" field when editing
                 const firstVisitGroup = document.getElementById('siteFirstVisit')?.parentElement;
+                const firstVisitField = document.getElementById('siteFirstVisit');
                 const nextVisitGroup = document.getElementById('nextVisitDateGroup');
                 
                 if (firstVisitGroup) firstVisitGroup.style.display = 'none';
+                if (firstVisitField) firstVisitField.removeAttribute('required'); // Remove required when hidden
                 if (nextVisitGroup) nextVisitGroup.style.display = 'block';
                 
                 // Find the earliest pending visit for this site and populate the date
