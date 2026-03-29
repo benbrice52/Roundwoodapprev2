@@ -4333,11 +4333,12 @@ This notification was generated automatically by Roundwood Route Manager.
                     }
                     
                     // Check ALL possible invoice fields (old and new systems)
+                    // NOTE: 'pending' means invoice PENDING to be sent (needs invoice)
+                    // Only 'sent' means invoice has been sent (awaiting payment)
                     const isInvoiced = 
                         visit.invoiced === true ||           // Old boolean field
                         visit.invoiced === 'true' ||         // String version
-                        visit.invoiceStatus === 'sent' ||    // New field
-                        visit.invoiceStatus === 'pending' || // Alternative status
+                        visit.invoiceStatus === 'sent' ||    // Invoice has been sent
                         visit.invoiceSent === true ||        // Alternative field name
                         visit.invoicedDate ||                // Has an invoice date
                         visit.invoiceSentDate;               // Has a sent date
