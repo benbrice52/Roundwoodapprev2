@@ -2312,6 +2312,7 @@
                         <select id="siteFrequency" required class="form-group input" style="width: 100%; padding: 0.75rem; border: 2px solid var(--gray-200); border-radius: 8px;">
                             <option value="7">Weekly (7 days)</option>
                             <option value="14">Fortnightly (14 days)</option>
+                            <option value="twice-monthly">2 per Month (1st-15th and 16th-end)</option>
                             <option value="28">4-Weekly (28 days)</option>
                             <option value="30">Monthly (30 days)</option>
                             <option value="seasonal">Seasonal (Fortnightly Mar-Oct, Monthly Nov-Feb)</option>
@@ -2342,6 +2343,12 @@
                     <textarea id="siteNotes" placeholder="Access codes, special instructions, etc."></textarea>
                 </div>
                 
+                <div class="form-group">
+                    <label for="siteServiceSchedule">Service Schedule</label>
+                    <textarea id="siteServiceSchedule" placeholder="Monthly service calendar - what work is due each visit&#10;&#10;Example:&#10;Visit 1 (1st-15th): Grass mowing, strimming&#10;Visit 2 (16th-31st): Grass mowing, strimming&#10;April: Weed control&#10;May: Hedge trimming" rows="6"></textarea>
+                    <small>💡 Operatives will see this when completing visits - helps them know what services are due</small>
+                </div>
+                
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-secondary" onclick="closeAddSiteModal()" style="flex: 1;">Cancel</button>
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Add Site</button>
@@ -2363,6 +2370,13 @@
                 
                 <div class="alert alert-warning" style="margin-bottom: 1.5rem;">
                     <strong>📸 Remember:</strong> Take before/after photos with your phone camera before completing
+                </div>
+                
+                <div id="serviceScheduleDisplay" style="display: none; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #0369a1; display: flex; align-items: center;">
+                        📋 <span style="margin-left: 0.5rem;">Service Schedule for This Site</span>
+                    </h3>
+                    <div id="serviceScheduleText" style="white-space: pre-wrap; color: #0c4a6e; font-size: 0.95rem; line-height: 1.5;"></div>
                 </div>
                 
                 <div class="form-group">
@@ -3673,14 +3687,24 @@ This notification was generated automatically by Roundwood Route Manager.
             console.log('Form submitted! editingSiteId:', editingSiteId);
             
             const frequencyValue = document.getElementById('siteFrequency').value;
+            
+            // Handle special frequency values (seasonal, twice-monthly, custom)
+            let frequency;
+            if (frequencyValue === 'seasonal' || frequencyValue === 'twice-monthly') {
+                frequency = frequencyValue; // Keep as string
+            } else {
+                frequency = parseInt(frequencyValue); // Convert to number for day-based frequencies
+            }
+            
             const siteData = {
                 name: document.getElementById('siteName').value,
                 address: document.getElementById('siteAddress').value,
                 contact: document.getElementById('siteContact').value,
                 phone: document.getElementById('sitePhone').value,
-                frequency: frequencyValue === 'seasonal' ? 'seasonal' : parseInt(frequencyValue),
+                frequency: frequency,
                 price: parseFloat(document.getElementById('sitePrice').value),
-                notes: document.getElementById('siteNotes').value
+                notes: document.getElementById('siteNotes').value,
+                serviceSchedule: document.getElementById('siteServiceSchedule').value
             };
 
             console.log('Site data to save:', siteData);
@@ -4831,7 +4855,8 @@ This notification was generated automatically by Roundwood Route Manager.
                     sitePhone: site.phone || '',
                     sitePrice: site.price,
                     siteFrequency: site.frequency,
-                    siteNotes: site.notes || ''
+                    siteNotes: site.notes || '',
+                    siteServiceSchedule: site.serviceSchedule || ''
                 };
 
                 for (const [fieldId, value] of Object.entries(fields)) {
@@ -5637,6 +5662,23 @@ This notification was generated automatically by Roundwood Route Manager.
             document.getElementById('completeVisitId').value = visitId;
             document.getElementById('completeVisitModal').classList.add('active');
             
+            // Find the visit and display service schedule if available
+            const visit = window.visits.find(v => v.id === visitId);
+            if (visit && visit.siteId) {
+                const site = window.sites.find(s => s.id === visit.siteId);
+                if (site && site.serviceSchedule) {
+                    // Show service schedule
+                    document.getElementById('serviceScheduleDisplay').style.display = 'block';
+                    document.getElementById('serviceScheduleText').textContent = site.serviceSchedule;
+                } else {
+                    // Hide service schedule
+                    document.getElementById('serviceScheduleDisplay').style.display = 'none';
+                }
+            } else {
+                // Hide service schedule
+                document.getElementById('serviceScheduleDisplay').style.display = 'none';
+            }
+            
             // Initialize signature pad after modal is visible
             setTimeout(() => {
                 initSignaturePad();
@@ -5824,6 +5866,34 @@ This notification was generated automatically by Roundwood Route Manager.
                                 nextVisitCreated = true;
                             }
                         }
+                    } else if (visit.frequency === 'twice-monthly') {
+                        // 2 per month - 1st half (1-15) and 2nd half (16-end)
+                        const completedDate = new Date(visit.scheduledDate);
+                        const dayOfMonth = completedDate.getDate();
+                        
+                        let nextVisitDate;
+                        if (dayOfMonth <= 15) {
+                            // First half completed - schedule for 16th of same month
+                            nextVisitDate = new Date(completedDate.getFullYear(), completedDate.getMonth(), 16);
+                        } else {
+                            // Second half completed - schedule for 1st of next month
+                            nextVisitDate = new Date(completedDate.getFullYear(), completedDate.getMonth() + 1, 1);
+                        }
+
+                        const nextVisitData = {
+                            siteId: visit.siteId,
+                            siteName: visit.siteName,
+                            siteAddress: visit.siteAddress,
+                            scheduledDate: nextVisitDate.toISOString().split('T')[0],
+                            price: visit.price,
+                            frequency: visit.frequency,
+                            status: 'pending',
+                            createdAt: new Date().toISOString()
+                        };
+
+                        const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                        await window.dbSet(nextVisitRef, nextVisitData);
+                        nextVisitCreated = true;
                     } else if (visit.frequency === 'seasonal') {
                         // Seasonal frequency - fortnightly Mar-Oct, monthly Nov-Feb
                         const nextVisitDate = new Date(visit.scheduledDate);
