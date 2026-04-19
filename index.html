@@ -1594,7 +1594,12 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">All Sites</h2>
-                        <button class="btn btn-primary" onclick="openAddSiteModal()">+ Add New Site</button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-secondary" onclick="upgradeAllSitesToYearAhead()" style="background: #0ea5e9;">
+                                🔄 Generate Year-Ahead Visits
+                            </button>
+                            <button class="btn btn-primary" onclick="openAddSiteModal()">+ Add New Site</button>
+                        </div>
                     </div>
                     <div id="sitesContainer"></div>
                 </div>
@@ -3324,6 +3329,7 @@
                 
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-secondary" onclick="closeEditVisitDateModal()" style="flex: 1;">Cancel</button>
+                    <button type="button" class="btn" onclick="deleteVisit()" style="flex: 1; background: #ef4444; color: white; border: 2px solid #dc2626;">🗑️ Delete</button>
                     <button type="button" class="btn btn-success" onclick="saveVisitDate()" style="flex: 1;">✓ Save</button>
                 </div>
             </div>
@@ -3680,6 +3686,286 @@ This notification was generated automatically by Roundwood Route Manager.
             if (titleElement) titleElement.textContent = '+ Add New Site';
         };
 
+        // ============================================
+        // VISIT CHAIN MANAGEMENT - FULL YEAR SCHEDULING
+        // ============================================
+        
+        // Helper: Format date without timezone issues
+        function formatDate(year, month, day) {
+            const monthStr = String(month).padStart(2, '0');
+            const dayStr = String(day).padStart(2, '0');
+            return `${year}-${monthStr}-${dayStr}`;
+        }
+        
+        // Helper: Parse date string to components
+        function parseDate(dateStr) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return { year, month, day };
+        }
+        
+        // Calculate next visit date based on frequency
+        function calculateNextVisitDate(currentDate, frequency) {
+            console.log(`\n→ Calculating next visit from ${currentDate}, frequency: ${frequency} (type: ${typeof frequency})`);
+            
+            const { year, month, day } = parseDate(currentDate);
+            
+            // SIMPLE DAY-BASED FREQUENCIES (7, 14, 28, 30)
+            if (typeof frequency === 'number') {
+                // Use Date object to handle month/year rollovers correctly
+                const date = new Date(year, month - 1, day); // month-1 because Date uses 0-indexed months
+                date.setDate(date.getDate() + frequency);
+                
+                const nextYear = date.getFullYear();
+                const nextMonth = date.getMonth() + 1; // Convert back to 1-indexed
+                const nextDay = date.getDate();
+                
+                const nextDate = formatDate(nextYear, nextMonth, nextDay);
+                console.log(`  Day-based (+${frequency} days): ${currentDate} → ${nextDate}`);
+                return nextDate;
+            }
+            
+            // TWICE-MONTHLY (1st-15th, 16th-end)
+            if (frequency === 'twice-monthly') {
+                let nextYear = year;
+                let nextMonth = month;
+                let nextDay;
+                
+                if (day <= 15) {
+                    // First half → next visit on 16th of same month
+                    nextDay = 16;
+                    console.log(`  Twice-monthly: day ${day} ≤ 15 → 16th of same month`);
+                } else {
+                    // Second half → next visit on 1st of next month
+                    nextDay = 1;
+                    nextMonth = month + 1;
+                    
+                    // Handle year rollover
+                    if (nextMonth > 12) {
+                        nextMonth = 1;
+                        nextYear = year + 1;
+                    }
+                    console.log(`  Twice-monthly: day ${day} > 15 → 1st of next month`);
+                }
+                
+                const nextDate = formatDate(nextYear, nextMonth, nextDay);
+                console.log(`  Result: ${currentDate} → ${nextDate}`);
+                return nextDate;
+            }
+            
+            // SEASONAL (Fortnightly Mar-Oct, Monthly Nov-Feb)
+            if (frequency === 'seasonal') {
+                // Check the VISIT's month (not today's month)
+                const isGrowingSeason = month >= 3 && month <= 10; // Mar-Oct
+                const daysToAdd = isGrowingSeason ? 14 : 30;
+                
+                // Use Date object for proper date arithmetic
+                const date = new Date(year, month - 1, day);
+                date.setDate(date.getDate() + daysToAdd);
+                
+                const nextYear = date.getFullYear();
+                const nextMonth = date.getMonth() + 1;
+                const nextDay = date.getDate();
+                
+                const nextDate = formatDate(nextYear, nextMonth, nextDay);
+                console.log(`  Seasonal: month ${month} = ${isGrowingSeason ? 'growing' : 'winter'}, +${daysToAdd} days`);
+                console.log(`  Result: ${currentDate} → ${nextDate}`);
+                return nextDate;
+            }
+            
+            // CUSTOM SCHEDULE or UNKNOWN
+            console.log(`  Unknown frequency type - returning null`);
+            return null;
+        }
+        
+        // Generate all visits for the next 12 months
+        async function generateYearOfVisits(siteId, siteName, siteAddress, startDate, price, frequency) {
+            if (frequency === 0 || frequency === '0') {
+                // Custom schedule - don't auto-generate
+                console.log('Custom schedule site - skipping auto-generation');
+                return;
+            }
+            
+            console.log(`\n=== GENERATING YEAR OF VISITS ===`);
+            console.log(`Site: ${siteName}`);
+            console.log(`Start: ${startDate}`);
+            console.log(`Frequency: ${frequency} (type: ${typeof frequency})`);
+            console.log(`Price: £${price}`);
+            
+            const userId = window.SHARED_TEAM_ID;
+            const visits = [];
+            let currentDate = startDate;
+            const endDate = new Date(startDate);
+            endDate.setFullYear(endDate.getFullYear() + 1); // 12 months ahead
+            
+            console.log(`End date: ${endDate.toISOString().split('T')[0]}`);
+            
+            let iterations = 0;
+            const maxIterations = 100; // Safety limit
+            
+            while (currentDate && new Date(currentDate) < endDate && iterations < maxIterations) {
+                // Create visit
+                console.log(`\nIteration ${iterations + 1}: Creating visit for ${currentDate}`);
+                
+                const visitData = {
+                    siteId: siteId,
+                    siteName: siteName,
+                    siteAddress: siteAddress,
+                    scheduledDate: currentDate,
+                    price: price,
+                    frequency: frequency,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                };
+                
+                const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                await window.dbSet(visitRef, visitData);
+                visits.push(currentDate);
+                
+                // Calculate next date
+                const previousDate = currentDate;
+                currentDate = calculateNextVisitDate(currentDate, frequency);
+                
+                if (currentDate === previousDate) {
+                    console.error(`ERROR: Next date same as current! Breaking loop to prevent infinite visits.`);
+                    break;
+                }
+                
+                if (!currentDate) {
+                    console.log(`Next date is null - stopping generation`);
+                    break;
+                }
+                
+                iterations++;
+            }
+            
+            console.log(`\n=== GENERATION COMPLETE ===`);
+            console.log(`Generated ${visits.length} visits for ${siteName}`);
+            console.log(`Stopped because: ${!currentDate ? 'null date' : new Date(currentDate) >= endDate ? 'reached end date' : iterations >= maxIterations ? 'max iterations' : 'unknown'}`);
+            console.log(`================================\n`);
+            
+            return visits.length;
+        }
+        
+        // Regenerate all future visits for a site after a date change
+        async function regenerateFutureVisits(siteId, editedVisitDate) {
+            const userId = window.SHARED_TEAM_ID;
+            const site = window.sites.find(s => s.id === siteId);
+            if (!site) return;
+            
+            // Find all future visits for this site (after the edited visit)
+            const futureVisits = window.visits
+                .filter(v => v.siteId === siteId && v.scheduledDate > editedVisitDate && v.status === 'pending')
+                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+            
+            console.log(`Regenerating ${futureVisits.length} future visits after ${editedVisitDate}`);
+            
+            // Delete all future visits
+            for (const visit of futureVisits) {
+                await window.dbRemove(window.dbRef(window.database, `users/${userId}/visits/${visit.id}`));
+            }
+            
+            // Regenerate from the edited date
+            const endDate = new Date(editedVisitDate);
+            endDate.setFullYear(endDate.getFullYear() + 1);
+            
+            let currentDate = calculateNextVisitDate(editedVisitDate, site.frequency);
+            let iterations = 0;
+            const maxIterations = 100;
+            
+            while (currentDate && new Date(currentDate) < endDate && iterations < maxIterations) {
+                const visitData = {
+                    siteId: siteId,
+                    siteName: site.name,
+                    siteAddress: site.address,
+                    scheduledDate: currentDate,
+                    price: site.price,
+                    frequency: site.frequency,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                };
+                
+                const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                await window.dbSet(visitRef, visitData);
+                
+                currentDate = calculateNextVisitDate(currentDate, site.frequency);
+                iterations++;
+            }
+            
+            console.log('Future visits regenerated');
+        }
+        
+        // Upgrade all existing sites to year-ahead scheduling
+        async function upgradeAllSitesToYearAhead() {
+            if (!confirm('This will generate a full year of visits for all your existing sites.\n\nThis is a ONE-TIME operation to upgrade sites to the new scheduling system.\n\nContinue?')) {
+                return;
+            }
+            
+            const userId = window.SHARED_TEAM_ID;
+            let processed = 0;
+            let skipped = 0;
+            let upgraded = 0;
+            
+            try {
+                console.log('Starting site upgrade...');
+                
+                for (const site of window.sites) {
+                    processed++;
+                    
+                    // Skip custom schedule sites
+                    if (site.frequency === 0 || site.frequency === '0') {
+                        console.log(`Skipping ${site.name} - custom schedule`);
+                        skipped++;
+                        continue;
+                    }
+                    
+                    // Find first pending visit for this site
+                    const pendingVisits = window.visits
+                        .filter(v => v.siteId === site.id && v.status === 'pending')
+                        .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+                    
+                    if (pendingVisits.length === 0) {
+                        console.log(`No pending visits for ${site.name} - skipping`);
+                        skipped++;
+                        continue;
+                    }
+                    
+                    // Check if already has many visits (already upgraded)
+                    if (pendingVisits.length > 10) {
+                        console.log(`${site.name} already has ${pendingVisits.length} visits - skipping`);
+                        skipped++;
+                        continue;
+                    }
+                    
+                    // Generate year of visits from first pending visit
+                    console.log(`Upgrading ${site.name}...`);
+                    const firstVisit = pendingVisits[0];
+                    await generateYearOfVisits(
+                        site.id,
+                        site.name,
+                        site.address,
+                        firstVisit.scheduledDate,
+                        site.price,
+                        site.frequency
+                    );
+                    upgraded++;
+                }
+                
+                alert(`✅ Upgrade Complete!\n\n` +
+                      `Sites processed: ${processed}\n` +
+                      `Upgraded to year-ahead: ${upgraded}\n` +
+                      `Skipped: ${skipped}\n\n` +
+                      `Refresh the page to see all your future visits!`);
+                
+                // Refresh views
+                if (typeof renderSites === 'function') renderSites();
+                if (typeof renderCalendar === 'function') renderCalendar();
+                
+            } catch (error) {
+                console.error('Error upgrading sites:', error);
+                alert('❌ Error during upgrade. Check console for details.\n\nSome sites may have been upgraded successfully.');
+            }
+        }
+
         // Add/Update Site Handler
         document.getElementById('addSiteForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -3776,22 +4062,35 @@ This notification was generated automatically by Roundwood Route Manager.
                     const siteRef = window.dbPush(window.dbRef(window.database, `users/${userId}/sites`));
                     await window.dbSet(siteRef, siteData);
 
-                    // Create first visit
-                    const visitData = {
-                        siteId: siteRef.key,
-                        siteName: siteData.name,
-                        siteAddress: siteData.address,
-                        scheduledDate: siteData.firstVisit,
-                        price: siteData.price,
-                        frequency: siteData.frequency,
-                        status: 'pending',
-                        createdAt: new Date().toISOString()
-                    };
+                    // Generate full year of visits (instead of just first visit)
+                    if (siteData.frequency !== 0 && siteData.frequency !== '0') {
+                        console.log('Generating year of visits...');
+                        await generateYearOfVisits(
+                            siteRef.key,
+                            siteData.name,
+                            siteData.address,
+                            siteData.firstVisit,
+                            siteData.price,
+                            siteData.frequency
+                        );
+                        alert('✅ Site added with full year of visits scheduled!');
+                    } else {
+                        // Custom schedule - create first visit only
+                        const visitData = {
+                            siteId: siteRef.key,
+                            siteName: siteData.name,
+                            siteAddress: siteData.address,
+                            scheduledDate: siteData.firstVisit,
+                            price: siteData.price,
+                            frequency: siteData.frequency,
+                            status: 'pending',
+                            createdAt: new Date().toISOString()
+                        };
+                        const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
+                        await window.dbSet(visitRef, visitData);
+                        alert('✅ Site added successfully!');
+                    }
 
-                    const visitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
-                    await window.dbSet(visitRef, visitData);
-
-                    alert('✅ Site added successfully!');
                     closeAddSiteModal();
                 }
             } catch (error) {
@@ -5835,113 +6134,50 @@ This notification was generated automatically by Roundwood Route Manager.
                     invoiceStatus: 'pending'
                 });
 
-                // Create next visit (unless site is paused)
+                // Top up visits if needed (instead of creating single next visit)
                 const site = window.sites.find(s => s.id === visit.siteId);
-                let nextVisitCreated = false;
                 
-                if (!site || !site.paused) {
-                    // Check if custom schedule (frequency = 0)
-                    if (visit.frequency === 0) {
-                        // Custom schedule - prompt for next visit date
-                        const nextDateStr = prompt('This site has a custom schedule.\n\nEnter the date for the NEXT visit (YYYY-MM-DD):\n\nExample: 2026-06-15');
+                if (site && !site.paused && visit.frequency !== 0 && visit.frequency !== '0') {
+                    // For regular maintenance: check if we need to top up the visit chain
+                    const siteVisits = window.visits
+                        .filter(v => v.siteId === visit.siteId && v.status === 'pending')
+                        .sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
+                    
+                    if (siteVisits.length > 0) {
+                        const latestVisit = siteVisits[0];
+                        const latestDate = new Date(latestVisit.scheduledDate);
+                        const threeMonthsFromNow = new Date();
+                        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
                         
-                        if (nextDateStr) {
-                            // Validate date format
-                            if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDateStr)) {
-                                alert('Invalid date format. Next visit not created.\n\nYou can add it manually later.');
-                            } else {
-                                const nextVisitData = {
-                                    siteId: visit.siteId,
-                                    siteName: visit.siteName,
-                                    siteAddress: visit.siteAddress,
-                                    scheduledDate: nextDateStr,
-                                    price: visit.price,
-                                    frequency: visit.frequency,
-                                    status: 'pending',
-                                    createdAt: new Date().toISOString()
-                                };
-
-                                const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
-                                await window.dbSet(nextVisitRef, nextVisitData);
-                                nextVisitCreated = true;
-                            }
+                        // If latest visit is less than 3 months away, generate more visits
+                        if (latestDate < threeMonthsFromNow) {
+                            console.log('Topping up visits for:', site.name);
+                            await generateYearOfVisits(
+                                site.id,
+                                site.name,
+                                site.address,
+                                latestVisit.scheduledDate,
+                                site.price,
+                                site.frequency
+                            );
                         }
-                    } else if (visit.frequency === 'twice-monthly') {
-                        // 2 per month - 1st half (1-15) and 2nd half (16-end)
-                        const completedDate = new Date(visit.scheduledDate);
-                        const dayOfMonth = completedDate.getDate();
-                        
-                        let nextVisitDate;
-                        if (dayOfMonth <= 15) {
-                            // First half completed - schedule for 16th of same month
-                            nextVisitDate = new Date(completedDate.getFullYear(), completedDate.getMonth(), 16);
-                        } else {
-                            // Second half completed - schedule for 1st of next month
-                            nextVisitDate = new Date(completedDate.getFullYear(), completedDate.getMonth() + 1, 1);
-                        }
-
+                    }
+                } else if (visit.frequency === 0 || visit.frequency === '0') {
+                    // Custom schedule - prompt for next visit
+                    const nextDateStr = prompt('This site has a custom schedule.\n\nEnter the date for the NEXT visit (YYYY-MM-DD):\n\nExample: 2026-06-15');
+                    
+                    if (nextDateStr && /^\d{4}-\d{2}-\d{2}$/.test(nextDateStr)) {
                         const nextVisitData = {
                             siteId: visit.siteId,
                             siteName: visit.siteName,
                             siteAddress: visit.siteAddress,
-                            scheduledDate: nextVisitDate.toISOString().split('T')[0],
+                            scheduledDate: nextDateStr,
                             price: visit.price,
                             frequency: visit.frequency,
                             status: 'pending',
                             createdAt: new Date().toISOString()
                         };
-
-                        const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
-                        await window.dbSet(nextVisitRef, nextVisitData);
-                        nextVisitCreated = true;
-                    } else if (visit.frequency === 'seasonal') {
-                        // Seasonal frequency - fortnightly Mar-Oct, monthly Nov-Feb
-                        const nextVisitDate = new Date(visit.scheduledDate);
-                        
-                        // Check CURRENT month (today), not the scheduled visit's month
-                        const today = new Date();
-                        const currentMonth = today.getMonth(); // 0-11 (0=Jan, 11=Dec)
-                        
-                        // March-October (months 2-9) = Fortnightly (14 days)
-                        // November-February (months 10-11, 0-1) = Monthly (30 days)
-                        const isGrowingSeason = currentMonth >= 2 && currentMonth <= 9;
-                        const daysToAdd = isGrowingSeason ? 14 : 30;
-                        
-                        nextVisitDate.setDate(nextVisitDate.getDate() + daysToAdd);
-
-                        const nextVisitData = {
-                            siteId: visit.siteId,
-                            siteName: visit.siteName,
-                            siteAddress: visit.siteAddress,
-                            scheduledDate: nextVisitDate.toISOString().split('T')[0],
-                            price: visit.price,
-                            frequency: visit.frequency,
-                            status: 'pending',
-                            createdAt: new Date().toISOString()
-                        };
-
-                        const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
-                        await window.dbSet(nextVisitRef, nextVisitData);
-                        nextVisitCreated = true;
-                    } else {
-                        // Standard frequency - auto-calculate next visit
-                        const nextVisitDate = new Date(visit.scheduledDate);
-                        nextVisitDate.setDate(nextVisitDate.getDate() + visit.frequency);
-
-                        const nextVisitData = {
-                            siteId: visit.siteId,
-                            siteName: visit.siteName,
-                            siteAddress: visit.siteAddress,
-                            scheduledDate: nextVisitDate.toISOString().split('T')[0],
-                            price: visit.price,
-                            frequency: visit.frequency,
-                            status: 'pending',
-                            createdAt: new Date().toISOString()
-                        };
-
-                        const nextVisitRef = window.dbPush(window.dbRef(window.database, `users/${userId}/visits`));
-                        await window.dbSet(nextVisitRef, nextVisitData);
-                        nextVisitCreated = true;
+                        await window.dbSet(window.dbPush(window.dbRef(window.database, `users/${userId}/visits`)), nextVisitData);
                     }
                 }
 
@@ -5965,8 +6201,7 @@ This notification was generated automatically by Roundwood Route Manager.
                 if (typeof renderInvoices === 'function') renderInvoices();
                 if (typeof updateStats === 'function') updateStats();
                 
-                const nextVisitMsg = nextVisitCreated ? '\n📅 Next visit scheduled' : '';
-                alert(`✅ Visit completed!\n📧 Email opening to office@roundwoodsolutions.co.uk${nextVisitMsg}`);
+                alert(`✅ Visit completed!\n📧 Email opening to office@roundwoodsolutions.co.uk`);
             } catch (error) {
                 console.error('Error completing visit:', error);
                 alert('Error completing visit. Please try again.');
@@ -8186,15 +8421,22 @@ Roundwood Solutions Limited
             
             try {
                 const userId = window.SHARED_TEAM_ID;
+                const visit = window.visits.find(v => v.id === currentEditingVisitId);
                 const visitRef = window.dbRef(window.database, `users/${userId}/visits/${currentEditingVisitId}`);
                 await window.dbUpdate(visitRef, {
                     scheduledDate: newDate
                 });
                 
+                // Regenerate all future visits if this is a regular maintenance site
+                if (visit && visit.siteId && visit.frequency !== 0 && visit.frequency !== '0') {
+                    console.log('Regenerating future visits after date change...');
+                    await regenerateFutureVisits(visit.siteId, newDate);
+                }
+                
                 // Close modal
                 closeEditVisitDateModal();
                 
-                alert(`✅ Visit date updated to ${new Date(newDate).toLocaleDateString('en-GB')}`);
+                alert(`✅ Visit date updated! All future visits have been adjusted.`);
                 
                 // Refresh all relevant views
                 if (typeof renderDueToday === 'function') renderDueToday();
@@ -8205,6 +8447,48 @@ Roundwood Solutions Limited
             } catch (error) {
                 console.error('Error updating visit date:', error);
                 alert('Error updating visit date. Please try again.');
+            }
+        };
+
+        // Delete Visit
+        window.deleteVisit = async function() {
+            if (!currentEditingVisitId) {
+                alert('Error: No visit selected');
+                return;
+            }
+            
+            // Get visit details for confirmation
+            const visit = window.visits.find(v => v.id === currentEditingVisitId);
+            if (!visit) {
+                alert('Visit not found');
+                return;
+            }
+            
+            const confirmMsg = `Delete this visit?\n\n${visit.siteName}\n${new Date(visit.scheduledDate).toLocaleDateString('en-GB')}\n\nThis cannot be undone!`;
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            
+            try {
+                const userId = window.SHARED_TEAM_ID;
+                const visitRef = window.dbRef(window.database, `users/${userId}/visits/${currentEditingVisitId}`);
+                await window.dbRemove(visitRef);
+                
+                // Close modal
+                closeEditVisitDateModal();
+                
+                alert('✅ Visit deleted!');
+                
+                // Refresh all relevant views
+                if (typeof renderDueToday === 'function') renderDueToday();
+                if (typeof renderVisits === 'function') renderVisits();
+                if (typeof renderCalendar === 'function') renderCalendar();
+                if (typeof updateStats === 'function') updateStats();
+                
+            } catch (error) {
+                console.error('Error deleting visit:', error);
+                alert('Error deleting visit. Please try again.');
             }
         };
 
