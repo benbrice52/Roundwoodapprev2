@@ -2321,6 +2321,8 @@
                             <option value="28">4-Weekly (28 days)</option>
                             <option value="30">Monthly (30 days)</option>
                             <option value="seasonal">Seasonal (Fortnightly Mar-Oct, Monthly Nov-Feb)</option>
+                            <option value="weed-3x">Weed Control - 3 visits annually (Mar, Jun, Sep)</option>
+                            <option value="weed-4x">Weed Control - 4 visits annually (Mar, May, Jul, Sep)</option>
                             <option value="0">Custom Schedule (set dates manually)</option>
                         </select>
                         <small>For Custom: You'll set the next visit date each time you complete a visit</small>
@@ -3772,6 +3774,63 @@ This notification was generated automatically by Roundwood Route Manager.
                 return nextDate;
             }
             
+            // WEED CONTROL - 3 VISITS ANNUALLY (March, June, September)
+            if (frequency === 'weed-3x') {
+                let nextYear = year;
+                let nextMonth;
+                let nextDay = day; // Keep same day of month
+                
+                if (month < 3) {
+                    // Before March → next is March
+                    nextMonth = 3;
+                } else if (month < 6) {
+                    // March-May → next is June
+                    nextMonth = 6;
+                } else if (month < 9) {
+                    // June-Aug → next is September
+                    nextMonth = 9;
+                } else {
+                    // September onwards → next is March next year
+                    nextMonth = 3;
+                    nextYear = year + 1;
+                }
+                
+                const nextDate = formatDate(nextYear, nextMonth, nextDay);
+                console.log(`  Weed Control 3x: month ${month} → next visit month ${nextMonth} (year ${nextYear})`);
+                console.log(`  Result: ${currentDate} → ${nextDate}`);
+                return nextDate;
+            }
+            
+            // WEED CONTROL - 4 VISITS ANNUALLY (March, May, July, September)
+            if (frequency === 'weed-4x') {
+                let nextYear = year;
+                let nextMonth;
+                let nextDay = day; // Keep same day of month
+                
+                if (month < 3) {
+                    // Before March → next is March
+                    nextMonth = 3;
+                } else if (month < 5) {
+                    // March-April → next is May
+                    nextMonth = 5;
+                } else if (month < 7) {
+                    // May-June → next is July
+                    nextMonth = 7;
+                } else if (month < 9) {
+                    // July-August → next is September
+                    nextMonth = 9;
+                } else {
+                    // September onwards → next is March next year
+                    nextMonth = 3;
+                    nextYear = year + 1;
+                }
+                
+                const nextDate = formatDate(nextYear, nextMonth, nextDay);
+                console.log(`  Weed Control 4x: month ${month} → next visit month ${nextMonth} (year ${nextYear})`);
+                console.log(`  Result: ${currentDate} → ${nextDate}`);
+                return nextDate;
+            }
+            
             // CUSTOM SCHEDULE or UNKNOWN
             console.log(`  Unknown frequency type - returning null`);
             return null;
@@ -3974,9 +4033,9 @@ This notification was generated automatically by Roundwood Route Manager.
             
             const frequencyValue = document.getElementById('siteFrequency').value;
             
-            // Handle special frequency values (seasonal, twice-monthly, custom)
+            // Handle special frequency values (seasonal, twice-monthly, weed control, custom)
             let frequency;
-            if (frequencyValue === 'seasonal' || frequencyValue === 'twice-monthly') {
+            if (frequencyValue === 'seasonal' || frequencyValue === 'twice-monthly' || frequencyValue === 'weed-3x' || frequencyValue === 'weed-4x') {
                 frequency = frequencyValue; // Keep as string
             } else {
                 frequency = parseInt(frequencyValue); // Convert to number for day-based frequencies
