@@ -1513,6 +1513,7 @@
                                     <div class="calendar-title" id="calendarMonthTitle">January 2026</div>
                                     <div style="display: flex; gap: 0.75rem; align-items: center;">
                                         <button onclick="openAddEventModal()" style="background: var(--primary); color: white; border: none; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">+ Add Event</button>
+                                        <button onclick="openAddOneOffJobModal()" style="background: #8b5cf6; color: white; border: none; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">💼 Add Job</button>
                                         <div class="calendar-nav">
                                             <button onclick="navigateCalendar('prev')">← Prev</button>
                                             <button onclick="navigateCalendar('today')">Today</button>
@@ -2793,6 +2794,124 @@
         </div>
     </div>
 
+    <!-- Add One-Off Job Modal -->
+    <div id="addOneOffJobModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">💼 Add One-Off Job</h2>
+                <button class="btn-close" onclick="closeAddOneOffJobModal()">×</button>
+            </div>
+            
+            <form id="addOneOffJobForm">
+                <div class="form-group">
+                    <label for="jobName">Job Name/Description *</label>
+                    <input type="text" id="jobName" required placeholder="e.g. Emergency tree removal, Deep clean patio">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="jobDate">Date *</label>
+                        <input type="date" id="jobDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="jobPrice">Price (Optional)</label>
+                        <input type="number" id="jobPrice" step="0.01" placeholder="£">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="jobCustomer">Customer Name (Optional)</label>
+                    <input type="text" id="jobCustomer" placeholder="e.g. Smith Farm, Local School">
+                </div>
+
+                <div class="form-group">
+                    <label for="jobLocation">Location/Address (Optional)</label>
+                    <input type="text" id="jobLocation" placeholder="Full address">
+                </div>
+
+                <div class="form-group">
+                    <label for="jobPhone">Phone (Optional)</label>
+                    <input type="tel" id="jobPhone" placeholder="Contact number">
+                </div>
+
+                <div class="form-group">
+                    <label for="jobNotes">Notes (Optional)</label>
+                    <textarea id="jobNotes" rows="2" placeholder="Special instructions, access info, etc."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddOneOffJobModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Add Job</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit One-Off Job Modal -->
+    <div id="editOneOffJobModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">✏️ Edit Job</h2>
+                <button class="btn-close" onclick="closeEditOneOffJobModal()">×</button>
+            </div>
+            
+            <form id="editOneOffJobForm">
+                <input type="hidden" id="editJobId">
+
+                <div class="form-group">
+                    <label for="editJobName">Job Name/Description *</label>
+                    <input type="text" id="editJobName" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="editJobDate">Date *</label>
+                        <input type="date" id="editJobDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editJobPrice">Price (Optional)</label>
+                        <input type="number" id="editJobPrice" step="0.01" placeholder="£">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="editJobCustomer">Customer Name (Optional)</label>
+                    <input type="text" id="editJobCustomer">
+                </div>
+
+                <div class="form-group">
+                    <label for="editJobLocation">Location/Address (Optional)</label>
+                    <input type="text" id="editJobLocation">
+                </div>
+
+                <div class="form-group">
+                    <label for="editJobPhone">Phone (Optional)</label>
+                    <input type="tel" id="editJobPhone">
+                </div>
+
+                <div class="form-group">
+                    <label for="editJobNotes">Notes (Optional)</label>
+                    <textarea id="editJobNotes" rows="2"></textarea>
+                </div>
+
+                <div class="form-group" style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 1rem;">
+                    <label for="editJobStatus" style="font-weight: 600;">Status</label>
+                    <select id="editJobStatus" style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 6px;">
+                        <option value="pending">⏳ Pending</option>
+                        <option value="completed">✅ Completed</option>
+                    </select>
+                    <small style="color: #0c4a6e; display: block; margin-top: 0.5rem;">When marked as Completed, job will appear in Invoice Required</small>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-danger" onclick="deleteOneOffJob()" style="flex: 0.5;">🗑️ Delete</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditOneOffJobModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit Pipeline Job Modal -->
     <div id="editPipelineJobModal" class="modal">
         <div class="modal-content" style="max-width: 700px;">
@@ -3203,6 +3322,20 @@
                     });
                 });
                 console.log('Loaded calendar events:', window.calendarEvents.length);
+                if (typeof renderCalendar === 'function') renderCalendar();
+            });
+            
+            // Listen to one-off jobs
+            const oneOffJobsRef = window.dbRef(window.database, `users/${userId}/oneOffJobs`);
+            window.dbOnValue(oneOffJobsRef, (snapshot) => {
+                window.oneOffJobs = [];
+                snapshot.forEach((childSnapshot) => {
+                    window.oneOffJobs.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                console.log('Loaded one-off jobs:', window.oneOffJobs.length);
                 if (typeof renderCalendar === 'function') renderCalendar();
             });
             
@@ -7009,6 +7142,9 @@ Roundwood Solutions Limited
                     let clickHandler = '';
                     if (event.isCalendarEvent) {
                         clickHandler = `onclick="editCalendarEvent('${event.id}')" style="cursor: pointer;"`;
+                    } else if (event.isOneOffJob) {
+                        // Click to edit one-off job
+                        clickHandler = `onclick="openEditOneOffJobModal('${event.jobId}')" style="cursor: pointer;"`;
                     } else if (event.isVisit && !event.isCompleted) {
                         // Only allow editing pending visits (not completed ones)
                         clickHandler = `onclick="editVisitDate('${event.visitId}')" style="cursor: pointer;"`;
@@ -7120,6 +7256,23 @@ Roundwood Solutions Limited
                                 });
                             }
                         }
+                    }
+                });
+            }
+            
+            // Get one-off jobs (pending only)
+            if (window.oneOffJobs) {
+                window.oneOffJobs.forEach(job => {
+                    if (job.scheduledDate === dateStr && job.status !== 'completed') {
+                        const isOverdue = date < today;
+                        events.push({
+                            type: 'project',
+                            icon: '💼',
+                            title: job.jobName || 'Job',
+                            jobId: job.id,
+                            isOneOffJob: true,
+                            isOverdue: isOverdue
+                        });
                     }
                 });
             }
@@ -7283,6 +7436,208 @@ Roundwood Solutions Limited
                 alert('Error deleting event');
             }
         };
+
+        // ============================================
+        // ONE-OFF JOB FUNCTIONS
+        // ============================================
+
+        window.oneOffJobs = [];
+
+        window.openAddOneOffJobModal = function() {
+            document.getElementById('addOneOffJobModal').classList.add('active');
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('jobDate').value = today;
+        };
+
+        window.closeAddOneOffJobModal = function() {
+            document.getElementById('addOneOffJobModal').classList.remove('active');
+            document.getElementById('addOneOffJobForm').reset();
+        };
+
+        // Add One-Off Job Form Handler
+        document.getElementById('addOneOffJobForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const jobName = document.getElementById('jobName').value;
+            const jobDate = document.getElementById('jobDate').value;
+            const jobPrice = parseFloat(document.getElementById('jobPrice').value) || 0;
+            const jobCustomer = document.getElementById('jobCustomer').value || '';
+            const jobLocation = document.getElementById('jobLocation').value || '';
+            const jobPhone = document.getElementById('jobPhone').value || '';
+            const jobNotes = document.getElementById('jobNotes').value || '';
+            
+            try {
+                const userId = window.SHARED_TEAM_ID;
+                const jobsRef = window.dbRef(window.database, `users/${userId}/oneOffJobs`);
+                const newJobRef = window.dbPush(jobsRef);
+                
+                await window.dbSet(newJobRef, {
+                    jobName: jobName,
+                    scheduledDate: jobDate,
+                    price: jobPrice,
+                    customerName: jobCustomer,
+                    location: jobLocation,
+                    phone: jobPhone,
+                    notes: jobNotes,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                });
+                
+                alert(`✅ Job "${jobName}" added for ${new Date(jobDate).toLocaleDateString('en-GB')}`);
+                closeAddOneOffJobModal();
+                loadOneOffJobs();
+                
+            } catch (error) {
+                console.error('Error adding job:', error);
+                alert('Error adding job');
+            }
+        });
+
+        window.openEditOneOffJobModal = function(jobId) {
+            const job = window.oneOffJobs.find(j => j.id === jobId);
+            if (!job) {
+                alert('Job not found');
+                return;
+            }
+            
+            document.getElementById('editJobId').value = jobId;
+            document.getElementById('editJobName').value = job.jobName || '';
+            document.getElementById('editJobDate').value = job.scheduledDate || '';
+            document.getElementById('editJobPrice').value = job.price || '';
+            document.getElementById('editJobCustomer').value = job.customerName || '';
+            document.getElementById('editJobLocation').value = job.location || '';
+            document.getElementById('editJobPhone').value = job.phone || '';
+            document.getElementById('editJobNotes').value = job.notes || '';
+            document.getElementById('editJobStatus').value = job.status || 'pending';
+            
+            document.getElementById('editOneOffJobModal').classList.add('active');
+        };
+
+        window.closeEditOneOffJobModal = function() {
+            document.getElementById('editOneOffJobModal').classList.remove('active');
+            document.getElementById('editOneOffJobForm').reset();
+        };
+
+        // Handle Edit One-Off Job Form
+        document.getElementById('editOneOffJobForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const jobId = document.getElementById('editJobId').value;
+            const jobName = document.getElementById('editJobName').value;
+            const jobDate = document.getElementById('editJobDate').value;
+            const jobPrice = parseFloat(document.getElementById('editJobPrice').value) || 0;
+            const jobCustomer = document.getElementById('editJobCustomer').value || '';
+            const jobLocation = document.getElementById('editJobLocation').value || '';
+            const jobPhone = document.getElementById('editJobPhone').value || '';
+            const jobNotes = document.getElementById('editJobNotes').value || '';
+            const jobStatus = document.getElementById('editJobStatus').value;
+            
+            console.log('🔧 Job form submitted:', { jobId, jobName, jobDate, jobStatus });
+            
+            try {
+                const userId = window.SHARED_TEAM_ID;
+                const jobRef = window.dbRef(window.database, `users/${userId}/oneOffJobs/${jobId}`);
+                
+                await window.dbUpdate(jobRef, {
+                    jobName: jobName,
+                    scheduledDate: jobDate,
+                    price: jobPrice,
+                    customerName: jobCustomer,
+                    location: jobLocation,
+                    phone: jobPhone,
+                    notes: jobNotes,
+                    status: jobStatus,
+                    updatedAt: new Date().toISOString()
+                });
+                
+                console.log('✅ Job updated. Status:', jobStatus);
+                
+                // If marking as complete, also add to invoice tracking
+                if (jobStatus === 'completed') {
+                    console.log('🔔 Job marked complete - adding to invoice tracking...');
+                    await addCompletedJobToInvoice(jobId, jobName, jobDate, jobPrice);
+                }
+                
+                alert('✅ Job updated');
+                closeEditOneOffJobModal();
+                loadOneOffJobs();
+                renderCalendar();
+                
+            } catch (error) {
+                console.error('Error updating job:', error);
+                alert('Error updating job');
+            }
+        });
+
+        window.deleteOneOffJob = async function() {
+            const jobId = document.getElementById('editJobId').value;
+            
+            if (!confirm('Delete this job?')) return;
+            
+            try {
+                const userId = window.SHARED_TEAM_ID;
+                const jobRef = window.dbRef(window.database, `users/${userId}/oneOffJobs/${jobId}`);
+                await window.dbRemove(jobRef);
+                alert('✅ Job deleted');
+                closeEditOneOffJobModal();
+                loadOneOffJobs();
+                
+            } catch (error) {
+                console.error('Error deleting job:', error);
+                alert('Error deleting job');
+            }
+        };
+
+        // Load One-Off Jobs from Firebase
+        async function loadOneOffJobs() {
+            try {
+                const userId = window.SHARED_TEAM_ID;
+                const jobsRef = window.dbRef(window.database, `users/${userId}/oneOffJobs`);
+                window.dbOnValue(jobsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    window.oneOffJobs = data ? Object.entries(data).map(([id, job]) => ({ ...job, id })) : [];
+                    console.log('Loaded one-off jobs:', window.oneOffJobs.length);
+                });
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+            }
+        }
+
+        // Add completed job to invoice tracking
+        async function addCompletedJobToInvoice(jobId, jobName, jobDate, jobPrice) {
+            try {
+                console.log('📝 addCompletedJobToInvoice called with:', { jobId, jobName, jobDate, jobPrice });
+                
+                const userId = window.SHARED_TEAM_ID;
+                
+                // Add to visits as a completed visit (this is what shows in Invoice Required)
+                const visitsRef = window.dbRef(window.database, `users/${userId}/visits`);
+                const newVisitRef = window.dbPush(visitsRef);
+                
+                const visitData = {
+                    siteName: jobName, // Use job name as site name
+                    siteAddress: 'One-Off Job',
+                    customerName: jobName,
+                    price: jobPrice,
+                    scheduledDate: jobDate,
+                    status: 'completed',
+                    completedDate: jobDate,
+                    oneOffJobId: jobId,
+                    isOneOffJob: true,
+                    frequency: '0', // Custom/one-off
+                    createdAt: new Date().toISOString()
+                };
+                
+                console.log('💾 Saving to visits collection:', visitData);
+                
+                await window.dbSet(newVisitRef, visitData);
+                
+                console.log('✅ Completed job added to invoice tracking successfully');
+            } catch (error) {
+                console.error('❌ Error adding to invoice:', error);
+            }
+        }
 
         // ============================================
         // REVIEW REQUEST FUNCTIONS
