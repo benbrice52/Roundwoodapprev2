@@ -928,8 +928,9 @@
             background: white;
         }
 
+        /* No height cap when open, so long lists (e.g. New Leads) are never cut off */
         .collapsible-section.open .collapsible-content {
-            max-height: 2000px;
+            max-height: none;
         }
 
         .collapsible-inner {
@@ -3174,15 +3175,33 @@
         // Define essential UI functions immediately (before auth listener)
         window.toggleSection = function(header) {
             const section = header.closest('.collapsible-section');
-            const arrow = header.querySelector('.collapsible-arrow');
-            
-            section.classList.toggle('open');
-            
-            if (section.classList.contains('open')) {
-                if (arrow) arrow.textContent = '▲';
-            } else {
-                if (arrow) arrow.textContent = '▼';
+            if (!section) return;
+            const content = section.querySelector(':scope > .collapsible-content');
+            const opening = !section.classList.contains('open');
+
+            if (!content) {
+                section.classList.toggle('open');
+                return;
             }
+
+            // Animate to the content's real height, then remove the inline limit
+            // so the section can keep growing as more items are added
+            clearTimeout(content._collapseTimer);
+            if (opening) {
+                content.style.maxHeight = '0px';
+                section.classList.add('open');
+                void content.offsetHeight;
+                content.style.maxHeight = content.scrollHeight + 'px';
+            } else {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                void content.offsetHeight;
+                section.classList.remove('open');
+                content.style.maxHeight = '0px';
+            }
+            content._collapseTimer = setTimeout(() => {
+                content.style.maxHeight = '';
+            }, 350);
+            // Arrow direction is handled by the CSS rotate on .open
         };
 
         window.showTab = (tabName) => {
